@@ -108,10 +108,49 @@ void ShiftAdd::CalculateArea(double _newHeight, double _newWidth, AreaModify _op
 			}
 			// Assume the INV and NAND2 are on the same row and the total width of them is smaller than the adder or DFF
 			if (spikingMode == NONSPIKING) {	// NONSPIKING: binary format
-				height = adder.height + tech.featureSize*MAX_TRANSISTOR_HEIGHT /* INV and NAND2 */ + dff.height;
+				double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;
+
+				if (tech.featureSize == 14 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 10 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 7 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 5 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 3 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 2 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 1 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+				else
+				MIN_CELL_HEIGHT *= 1;
+
+				height = adder.height + tech.featureSize*MIN_CELL_HEIGHT /* INV and NAND2 */ + dff.height;
 				width = _newWidth;
+
 			} else {	// SPIKING: count spikes
-				height = tech.featureSize*MAX_TRANSISTOR_HEIGHT /* INV and NAND2 */ + dff.height;
+				double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;
+
+				if (tech.featureSize == 14 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 10 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 7 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 5 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 3 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 2 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+				else if (tech.featureSize == 1 * 1e-9)
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+				else
+				MIN_CELL_HEIGHT *= 1;
+
+				height = tech.featureSize*MIN_CELL_HEIGHT /* INV and NAND2 */ + dff.height;
 				width = _newWidth;
 			}
 			area = height * width;

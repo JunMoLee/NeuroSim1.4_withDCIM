@@ -89,6 +89,42 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 	
 	double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;  //set real layout cell height
 	double MIN_CELL_WIDTH = (MIN_GAP_BET_GATE_POLY + POLY_WIDTH) * 2;  //set real layout cell width
+
+	if (tech.featureSize == 14 * 1e-9)
+	MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 10 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 7 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 5 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 3 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 2 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+    else if (tech.featureSize == 1 * 1e-9)
+    MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+    else
+    MIN_CELL_HEIGHT *= 1;
+
+	if (tech.featureSize == 14 * 1e-9)
+	MIN_CELL_WIDTH  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 10 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 7 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 5 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 3 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 2 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else if (tech.featureSize == 1 * 1e-9)
+    MIN_CELL_WIDTH  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    else
+    MIN_CELL_WIDTH  *= 1;
+    
+
 	if (cell.memCellType == Type::SRAM) {  //if array is SRAM
 		if (relaxArrayCellWidth) {  //if want to relax the cell width
 			lengthRow = (double)numCol * MAX(cell.widthInFeatureSize, MIN_CELL_WIDTH) * tech.featureSize;
@@ -139,13 +175,14 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 	//start to initializing the subarray modules
 	if (cell.memCellType == Type::SRAM) {  //if array is SRAM
 		
+
 		//firstly calculate the CMOS resistance and capacitance
 		resCellAccess = CalculateOnResistance(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
 		capCellAccess = CalculateDrainCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, cell.widthInFeatureSize / ((tech.featureSize <= 14*1e-9)? (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT):1) * tech.featureSize, tech);
 		cell.capSRAMCell = capCellAccess + CalculateDrainCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, cell.widthInFeatureSize / ((tech.featureSize <= 14*1e-9)? (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT):1) * tech.featureSize, tech) 
 						+ CalculateDrainCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, PMOS, cell.widthInFeatureSize / ((tech.featureSize <= 14*1e-9)? (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT):1) * tech.featureSize, tech) 
 						+ CalculateGateCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech) + CalculateGateCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech);
-
+		
 		if (conventionalSequential) {
 			wlDecoder.Initialize(REGULAR_ROW, (int)ceil(log2(numRow)), false, false);
 			senseAmp.Initialize(numCol, false, cell.minSenseVoltage, lengthRow/numCol, clkFreq, numReadCellPerOperationNeuro);

@@ -31,11 +31,11 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 * Developer list:
-*   Pai-Yu Chen	    Email: pchen72 at asu dot edu
+*   Pai-Yu Chen     Email: pchen72 at asu dot edu
 *
 *   Xiaochen Peng   Email: xpeng15 at asu dot edu
 *
-*	Rui Liu			Email: rliu51 at asu dot edu
+*   Rui Liu         Email: rliu51 at asu dot edu
 ********************************************************************************/
 
 #include <cmath>
@@ -48,42 +48,98 @@ using namespace std;
 
 /* Beyond 22 nm technology, the value capIdealGate is the sum of capIdealGate and capOverlap and capFringe */
 double CalculateGateCap(double width, Technology tech) {
-	double widthEff = 0;
-	if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
-		widthEff = width;
-	} else {
-		width *= tech.PitchFin/(2 * tech.featureSize);
-		widthEff = ceil(width/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
-	}
+    double widthEff = 0;
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
+        widthEff = width;
+    } else if (tech.featureSize >= 7 * 1e-9) { // adding GAA, 5nm cases (Junmo)
+        width *= tech.PitchFin/(2 * tech.featureSize);
+        widthEff = ceil(width/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
+    }
+    else{
+        width *= tech.effective_width/(2 * tech.featureSize);
+        widthEff = width;
+    }
     return (tech.capIdealGate + tech.capOverlap + tech.capFringe) * widthEff   // 3 * tech.capFringe
            + tech.phyGateLength * tech.capPolywire;
 }
 
-double CalculateGateArea(	// Calculate layout area and width of logic gate given fixed layout height
+double CalculateGateArea(     // Calculate layout area and width of logic gate given fixed layout height
     int gateType, int numInput,
     double widthNMOS, double widthPMOS,
     double heightTransistorRegion, Technology tech,
     double *height, double *width) {
 
-	if (tech.featureSize <= 14 * 1e-9) {  // finfet
-		widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
-		widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
-		heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
-	}
-	
-    double	ratio = widthPMOS / (widthPMOS + widthNMOS);
-    double maxWidthPMOS, maxWidthNMOS;
-    int maxNumPFin, maxNumNFin;	/* Max number of fins for the specified cell height */
+    if (tech.featureSize <= 14 * 1e-9) {  // finfet
+        widthNMOS *= tech.PitchFin/(2 * tech.featureSize); // for GAA, number of nanosheets is calculated when divided by (2 * tech.featureSize)
+        widthPMOS *= tech.PitchFin/(2 * tech.featureSize); // for GAA, number of nanosheets is calculated when divided by (2 * tech.featureSize) 
+        heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+
+    if (tech.featureSize <= 2 * 1e-9) // GAA case
+    {
+    widthNMOS *= 1/(2 * tech.featureSize);
+    widthPMOS *= 1/(2 * tech.featureSize);
+    }
+
+    // account for new cell height technology trend
+    if (tech.featureSize == 10 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else if (tech.featureSize == 7 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else if (tech.featureSize == 5 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else if (tech.featureSize == 3 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else if (tech.featureSize == 2 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else if (tech.featureSize == 1 * 1e-9)
+    heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+    else
+    heightTransistorRegion *= 1;
+
+    }
+    
+    double  ratio = widthPMOS / (widthPMOS + widthNMOS);
+    double maxWidthPMOS=0, maxWidthNMOS=0;
+    int maxNumPFin=0, maxNumNFin=0; /* Max number of fins for the specified cell height */
+
+    // add GAA
+    int NumPSheet=0;
+    int NumNSheet=0;
+    double maxNumPSheet=0;
+    double maxNumNSheet=0;
     double unitWidthRegionP, unitWidthRegionN;
     double widthRegionP, widthRegionN;
     double heightRegionP, heightRegionN;
     int numFoldedPMOS = 1, numFoldedNMOS = 1;
 
-    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {	// Bulk
-        if (ratio == 0) {	/* no PMOS */
+    // add CPP paramter
+    double CPP = POLY_WIDTH + MIN_GAP_BET_GATE_POLY;
+    double CPP_advanced= POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET;
+
+    // account for new cell height technology trend
+    if (tech.featureSize == 10 * 1e-9)
+    CPP_advanced = CPP_10nm;
+    else if (tech.featureSize == 7 * 1e-9)
+    CPP_advanced =  CPP_7nm;
+    else if (tech.featureSize == 5 * 1e-9)
+    CPP_advanced =  CPP_5nm;
+    else if (tech.featureSize == 3 * 1e-9)
+    CPP_advanced =  CPP_3nm;
+    else if (tech.featureSize == 2 * 1e-9)
+    CPP_advanced =  CPP_2nm;
+    else if (tech.featureSize == 1 * 1e-9)
+    CPP_advanced = CPP_1nm;
+    else
+    heightTransistorRegion *= 1;
+    
+
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+
+        
+        if (ratio == 0) {   /* no PMOS */
             maxWidthPMOS = 0;
             maxWidthNMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
-        } else if (ratio == 1) {	/* no NMOS */
+        } else if (ratio == 1) {    /* no NMOS */
             maxWidthPMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
             maxWidthNMOS = 0;
         } else {
@@ -93,11 +149,11 @@ double CalculateGateArea(	// Calculate layout area and width of logic gate given
 
         if (widthPMOS > 0) {
             if (widthPMOS <= maxWidthPMOS) { /* No folding */
-                unitWidthRegionP = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;
+                unitWidthRegionP = 2 * (CPP) * tech.featureSize;
                 heightRegionP = widthPMOS;
-            } else {	/* Folding */
+            } else {    /* Folding */
                 numFoldedPMOS = (int)(ceil(widthPMOS / maxWidthPMOS));
-                unitWidthRegionP = (numFoldedPMOS + 1) * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;
+                unitWidthRegionP = (numFoldedPMOS + 1) * (CPP) * tech.featureSize;
                 heightRegionP = maxWidthPMOS;
             }
         } else {
@@ -107,38 +163,94 @@ double CalculateGateArea(	// Calculate layout area and width of logic gate given
 
         if (widthNMOS > 0) {
             if (widthNMOS <= maxWidthNMOS) { /* No folding */
-                unitWidthRegionN = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;
+                unitWidthRegionN = 2 * (CPP) * tech.featureSize;
                 heightRegionN = widthNMOS;
-            } else {	/* Folding */
+            } else {    /* Folding */
                 numFoldedNMOS = (int)(ceil(widthNMOS / maxWidthNMOS));
-                unitWidthRegionN = (numFoldedNMOS + 1) * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;
+                unitWidthRegionN = (numFoldedNMOS + 1) * (CPP) * tech.featureSize;
                 heightRegionN = maxWidthNMOS;
             }
         } else {
             unitWidthRegionN = 0;
             heightRegionN = 0;
         }
-		
-    } else { //FinFET
-        if (ratio == 0) {	/* no PFinFET */
+        
+    } else { //FinFET, GAA, or beyond
+
+        /* to be deleted */
+        /*
+        if (ratio == 0) {   
             maxNumPFin = 0;
             maxNumNFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
-        } else if (ratio == 1) {	/* no NFinFET */
+        } else if (ratio == 1) {    
             maxNumPFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
             maxNumNFin = 0;
         } else {
             maxNumPFin = (int)(floor(ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
             maxNumNFin = (int)(floor( (1 - ratio) * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
         }
+        */
+
+        // replaced with the following code
+        if (tech.featureSize == 14 * 1e-9) { // adding more cases 
+            maxNumPFin = maxNumNFin = 4; // changed from 3 to 4
+        } else if (tech.featureSize == 10 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+        } else if (tech.featureSize == 7 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+        } else if (tech.featureSize == 5 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+        } else if (tech.featureSize == 3 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+        } else if (tech.featureSize == 2 * 1e-9) {
+            maxNumPSheet= maxNumNSheet = 8;
+        } else if (tech.featureSize == 1 * 1e-9) {
+            maxNumPSheet= maxNumNSheet = 16;
+        } 
+
+        double temp_P=2*maxNumPFin;
+        double temp_N=2*maxNumNFin;
+        double temp_P_NS=2*maxNumPSheet;
+        double temp_N_NS=2*maxNumNSheet;
+
+        int temp_P_ratio=int (2*maxNumPFin* (ratio));
+        int temp_N_ratio=int (2*maxNumNFin* (1-ratio));
+        int temp_P_NS_ratio=int (2*maxNumPSheet * (ratio));
+        int temp_N_NS_ratio=int (2*maxNumNSheet* (1-ratio));
+
+        if (temp_P_ratio==0) temp_P_ratio +=1;
+        if (temp_N_ratio==0) temp_N_ratio +=1;
+        if (temp_P_NS_ratio==0) temp_P_NS_ratio +=1;
+        if (temp_N_NS_ratio==0) temp_N_NS_ratio +=1;
+
+        if (ratio == 0) {   /* no PFinFET */
+            maxNumPFin = 0;
+            maxNumNFin = temp_N;
+            maxNumPSheet = 0;
+            maxNumNSheet= temp_N;
+        } else if (ratio == 1) {    /* no NFinFET */
+            maxNumPFin = temp_P;
+            maxNumNFin = 0;
+            maxNumPSheet = temp_P;
+            maxNumNSheet= 0;
+        } else {
+            maxNumPFin = temp_P_ratio; //(ratio);//2*temp_P); // change from floor to int
+            maxNumNFin = temp_N_ratio;//((1-ratio));// *2*temp_N);
+            maxNumPSheet = temp_P_NS_ratio; //(ratio);// *2*temp_P_NS);
+            maxNumNSheet = temp_N_NS_ratio; // ((1-ratio));// *2*temp_N_NS);
+        }
+
+        if (tech.featureSize<= 14*1e-9 &&tech.featureSize >= 3 * 1e-9){
 
         int NumPFin = (int)(ceil(widthPMOS/(tech.PitchFin)));
+        
         if (NumPFin > 0) {
             if (NumPFin <= maxNumPFin) { /* No folding */
-                unitWidthRegionP = 2 * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET) * tech.featureSize;
-                heightRegionP = (NumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-            } else {	/* Folding */
+                unitWidthRegionP = 2 * (CPP_advanced) * tech.featureSize;
+                heightRegionP = (NumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2; 
+            } else {    /* Folding */
                 numFoldedPMOS = (int)(ceil(NumPFin / maxNumPFin));
-                unitWidthRegionP = (numFoldedPMOS + 1) * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET) * tech.featureSize;
+                unitWidthRegionP = (numFoldedPMOS + 1) * (CPP_advanced) * tech.featureSize;
                 heightRegionP = (maxNumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
             }
         } else {
@@ -147,18 +259,58 @@ double CalculateGateArea(	// Calculate layout area and width of logic gate given
         }
 
         int NumNFin = (int)(ceil(widthNMOS/(tech.PitchFin)));
+
         if (NumNFin > 0) {
             if (NumNFin <= maxNumNFin) { /* No folding */
-                unitWidthRegionN = 2 * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET) * tech.featureSize;
+                unitWidthRegionN = 2 * (CPP_advanced) * tech.featureSize;
                 heightRegionN = (NumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-            } else {	/* Folding */
+            } else {    /* Folding */
                 numFoldedNMOS = (int)(ceil(NumNFin / maxNumNFin));
-                unitWidthRegionN = (numFoldedNMOS + 1) * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET) * tech.featureSize;
+                unitWidthRegionN = (numFoldedNMOS + 1) * (CPP_advanced) * tech.featureSize;
                 heightRegionN = (maxNumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
             }
         } else {
             unitWidthRegionN = 0;
             heightRegionN = 0;
+        }
+
+        }
+
+        else {
+
+        int NumPSheet = (int)(ceil(widthPMOS));
+        
+        
+        if (NumPSheet > 0) {
+            if (NumPSheet <= maxNumPSheet) { /* No folding */
+                unitWidthRegionP = 2 * (CPP_advanced) * tech.featureSize;
+                heightRegionP = 0; // not needed 
+            } else {    /* Folding */
+                numFoldedPMOS = (int)(ceil(NumPSheet/ maxNumPSheet));
+                unitWidthRegionP = (numFoldedPMOS + 1) * (CPP_advanced) * tech.featureSize;
+                heightRegionP = 0; // not needed 
+            }
+        } else {
+            unitWidthRegionP = 0;
+            heightRegionP = 0;
+        }
+
+        int NumNSheet = (int)(ceil(widthNMOS));
+
+        if (NumNSheet > 0) {
+            if (NumNSheet <= maxNumNSheet) { /* No folding */
+                unitWidthRegionN = 2 * (CPP_advanced) * tech.featureSize;
+                heightRegionN = 0; // not needed 
+            } else {    /* Folding */
+                numFoldedNMOS = (int)(ceil(NumNSheet / maxNumNSheet));
+                unitWidthRegionN = (numFoldedNMOS + 1) * (CPP_advanced) * tech.featureSize;
+                heightRegionN = 0; // not needed 
+            }
+        } else {
+            unitWidthRegionN = 0;
+            heightRegionN = 0;
+        }
+
         }
 
     }
@@ -169,37 +321,37 @@ double CalculateGateArea(	// Calculate layout area and width of logic gate given
         widthRegionN = unitWidthRegionN;
         break;
     case NOR:
-        if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {	// Need to subtract the source/drain sharing region
-			if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {	// Bulk
-				widthRegionP = unitWidthRegionP * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY);
-				widthRegionN = unitWidthRegionN * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY);
-			} else {
-				widthRegionP = unitWidthRegionP * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET);
-				widthRegionN = unitWidthRegionN * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET);
-			}
-        } else {	// If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices.
+        if (numFoldedPMOS == 1 && numFoldedNMOS == 1) { // Need to subtract the source/drain sharing region
+            if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+                widthRegionP = unitWidthRegionP * numInput
+                               - (numInput-1) * tech.featureSize * (CPP);
+                widthRegionN = unitWidthRegionN * numInput
+                               - (numInput-1) * tech.featureSize * (CPP);
+            } else {
+                widthRegionP = unitWidthRegionP * numInput
+                               - (numInput-1) * tech.featureSize * (CPP_advanced);
+                widthRegionN = unitWidthRegionN * numInput
+                               - (numInput-1) * tech.featureSize * (CPP_advanced);
+            }
+        } else {    // If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices.
             widthRegionP = unitWidthRegionP * numInput;
             widthRegionN = unitWidthRegionN * numInput;
         }
         break;
     case NAND:
-        if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {	// Need to subtract the source/drain sharing region
-			if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {	// Bulk
-				widthRegionP = unitWidthRegionP * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY);
-				widthRegionN = unitWidthRegionN * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY);
-			} else {
-				widthRegionP = unitWidthRegionP * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET);
-				widthRegionN = unitWidthRegionN * numInput
-							   - (numInput-1) * tech.featureSize * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET);
-			}
-        } else {	// If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices.
+        if (numFoldedPMOS == 1 && numFoldedNMOS == 1) { // Need to subtract the source/drain sharing region
+            if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+                widthRegionP = unitWidthRegionP * numInput
+                               - (numInput-1) * tech.featureSize * (CPP);
+                widthRegionN = unitWidthRegionN * numInput
+                               - (numInput-1) * tech.featureSize * (CPP);
+            } else {
+                widthRegionP = unitWidthRegionP * numInput
+                               - (numInput-1) * tech.featureSize * (CPP_advanced);
+                widthRegionN = unitWidthRegionN * numInput
+                               - (numInput-1) * tech.featureSize * (CPP_advanced);
+            }
+        } else {    // If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices.
             widthRegionP = unitWidthRegionP * numInput;
             widthRegionN = unitWidthRegionN * numInput;
         }
@@ -209,210 +361,323 @@ double CalculateGateArea(	// Calculate layout area and width of logic gate given
     }
 
     *width = MAX(widthRegionN, widthRegionP);
-    *height = heightTransistorRegion;	// Fixed standard cell height
+    *height = heightTransistorRegion;   // Fixed standard cell height
 
     return (*width)*(*height);
+
 }
+
  
 void CalculateGateCapacitance(
     int gateType, int numInput,
     double widthNMOS, double widthPMOS,
     double heightTransistorRegion, Technology tech,
     double *capInput, double *capOutput) {
-	if (capInput){
-		*(capInput) = CalculateGateCap(widthNMOS, tech) + CalculateGateCap(widthPMOS, tech);
-	}
-	if (capOutput){
-		if (tech.featureSize <= 14 * 1e-9) {  // finfet
-			widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
-			widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
-			heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
-		}
-		double	ratio = widthPMOS / (widthPMOS + widthNMOS);
-		double maxWidthPMOS = 0, maxWidthNMOS = 0;
-		int maxNumPFin = 0, maxNumNFin = 0;	/* Max numbers of fin for the specified cell height */
-		double unitWidthDrainP = 0, unitWidthDrainN = 0;
-		double unitWidthSourceP = 0, unitWidthSourceN = 0;
-		double widthDrainP = 0, widthDrainN = 0;
-		double heightDrainP = 0, heightDrainN = 0;
-		int numFoldedPMOS = 1, numFoldedNMOS = 1;
-		double widthDrainSidewallP = 0, widthDrainSidewallN = 0;
-		if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
-			if (ratio == 0) {	/* no PMOS */
-				maxWidthPMOS = 0;
-				maxWidthNMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
-			} else if (ratio == 1) {	/* no NMOS */
-				maxWidthPMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
-				maxWidthNMOS = 0;
-			} else {
-				maxWidthPMOS = ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize);
-				maxWidthNMOS = maxWidthPMOS / ratio * (1 - ratio);
-			}
+    if (capInput){
+        *(capInput) = CalculateGateCap(widthNMOS, tech) + CalculateGateCap(widthPMOS, tech);
+    }
+    if (capOutput){
 
-			if (widthPMOS > 0) {
-				if (widthPMOS <= maxWidthPMOS) { /* No folding */
-					unitWidthDrainP = tech.featureSize * MIN_GAP_BET_GATE_POLY;
-					unitWidthSourceP = unitWidthDrainP;
-					heightDrainP = widthPMOS;
-				} else {	/* Folding */
-					numFoldedPMOS = (int)(ceil(widthPMOS / maxWidthPMOS));
-					unitWidthDrainP = (int)ceil((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;	// Num of drain fingers >= num of source fingers
-					unitWidthSourceP = (int)floor((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
-					heightDrainP = maxWidthPMOS;
-				}
-			} else {
-				unitWidthDrainP = 0;
-				unitWidthSourceP = 0;
-				heightDrainP = 0;
-			}
-			if (widthNMOS > 0) {
-				if (widthNMOS <= maxWidthNMOS) { /* No folding */
-					unitWidthDrainN = tech.featureSize * MIN_GAP_BET_GATE_POLY;
-					unitWidthSourceN = unitWidthDrainN;
-					heightDrainN = widthNMOS;
-				} else {	/* Folding */
-					numFoldedNMOS = (int)(ceil(widthNMOS / maxWidthNMOS));
-					unitWidthDrainN = (int)ceil((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
-					unitWidthSourceN = (int)floor((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
-					heightDrainN = maxWidthNMOS;
-				}
-			} else {
-				unitWidthDrainN = 0;
-				unitWidthSourceN = 0;
-				heightDrainN = 0;
-			}
+        // replaced
+        /*
+        if (tech.featureSize <= 14 * 1e-9) {  // finfet
+            widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
+            widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
+            heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+        }
+        */
 
-		} else { //FinFET
-			if (ratio == 0) {	/* no PFinFET */
-				maxNumPFin = 0;
-				maxNumNFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
-			} else if (ratio == 1) {	/* no NFinFET */
-				maxNumPFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
-				maxNumNFin = 0;
-			} else {
-				maxNumPFin = (int)(floor(ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
-				maxNumNFin = (int)(floor( (1 - ratio) * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
-			}
+    if (tech.featureSize <= 14 * 1e-9) {  // finfet
+        widthNMOS *= tech.PitchFin/(2 * tech.featureSize); // for GAA, number of nanosheets is calculated when divided by (2 * tech.featureSize)
+        widthPMOS *= tech.PitchFin/(2 * tech.featureSize); // for GAA, number of nanosheets is calculated when divided by (2 * tech.featureSize) 
+        heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
 
-			int NumPFin = (int)(ceil(widthPMOS/(tech.PitchFin)));
+    if (tech.featureSize <= 2 * 1e-9) // GAA case
+    {
+    widthNMOS *= 1/(2 * tech.featureSize);
+    widthPMOS *= 1/(2 * tech.featureSize);
+    }
+        switch (int(tech.featureSize * 1e+9)) {
+        case 10: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        case 7: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        case 5: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        case 3: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        case 2: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        case 1: heightTransistorRegion *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT_FINFET);
+        default: heightTransistorRegion *= 1;
+        break;
 
-			if (NumPFin > 0) {
-				if (NumPFin <= maxNumPFin) { /* No folding */
-					unitWidthDrainP = tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					unitWidthSourceP = unitWidthDrainP;
-					heightDrainP = (NumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-				} else {	/* Folding */
-					numFoldedPMOS = (int)(ceil(NumPFin / maxNumPFin));
-					unitWidthDrainP = (int)ceil((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					unitWidthSourceP = (int)floor((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					heightDrainP = (maxNumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-				}
-			} else {
-				unitWidthDrainP = 0;
-				unitWidthSourceP = 0;
-				heightDrainP = 0;
-			}
+        }
+    }
 
-			int NumNFin = (int)(ceil(widthNMOS/(tech.PitchFin)));
+        double  ratio = widthPMOS / (widthPMOS + widthNMOS);
+        double maxWidthPMOS = 0, maxWidthNMOS = 0;
+        int maxNumPFin = 0, maxNumNFin = 0; /* Max numbers of fin for the specified cell height */
+        double unitWidthDrainP = 0, unitWidthDrainN = 0;
+        double unitWidthSourceP = 0, unitWidthSourceN = 0;
+        double widthDrainP = 0, widthDrainN = 0;
+        double heightDrainP = 0, heightDrainN = 0;
+        int numFoldedPMOS = 1, numFoldedNMOS = 1;
+        double widthDrainSidewallP = 0, widthDrainSidewallN = 0;
+        // add GAA
+        int NumPSheet;
+        int NumNSheet;
+        int maxNumSheet;
 
-			if (NumNFin > 0) {
-				if (NumNFin <= maxNumNFin) { /* No folding */
-					unitWidthDrainN = tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					unitWidthSourceN = unitWidthDrainN;
-					heightDrainN = (NumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-				} else {	/* Folding */
-					numFoldedNMOS = (int)(ceil(NumNFin / maxNumNFin));
-					unitWidthDrainN = (int)ceil((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					unitWidthSourceN = (int)floor((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
-					heightDrainN = (maxNumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-				}
-			} else {
-				unitWidthDrainN = 0;
-				unitWidthSourceN = 0;
-				heightDrainN = 0;
-			}
-		}
+        if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+            if (ratio == 0) {   /* no PMOS */
+                maxWidthPMOS = 0;
+                maxWidthNMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
+            } else if (ratio == 1) {    /* no NMOS */
+                maxWidthPMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
+                maxWidthNMOS = 0;
+            } else {
+                maxWidthPMOS = ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize);
+                maxWidthNMOS = maxWidthPMOS / ratio * (1 - ratio);
+            }
 
-		switch (gateType) {
-		case INV:
-			if (widthPMOS > 0) {
-				widthDrainP = unitWidthDrainP;
-				// Folding=1: both drain and source has 1 side; folding=2: drain has 2 sides and source has 0 side... etc
-				widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1+(numFoldedPMOS+1)%2);
-			}
-			if (widthNMOS > 0) {
-				widthDrainN = unitWidthDrainN;
-				widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1+(numFoldedPMOS+1)%2);
-			}
-			break;
-		case NOR:
-			// If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices
-			if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {
-				if (widthPMOS > 0) {	// No need to consider the source capacitance in series PMOS because here source and drain shares
-					widthDrainP = unitWidthDrainP * numInput;
-					widthDrainSidewallP = widthDrainP * 2 + heightDrainP;
-				}
-				if (widthNMOS > 0) {	// The number of NMOS drains is not equal to the number of NMOS in parallel because drain can share
-					widthDrainN = unitWidthDrainN * (int)floor((double)(numInput+1)/2);	// Use floor: assume num of source regions >= num of drain regions
-					widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1-(numInput+1)%2);
-				}
-			} else {
-				if (widthPMOS > 0) {	// Need to consider the source capacitance in series PMOS (excluding the top one)
-					widthDrainP = unitWidthDrainP * numInput + (numInput-1) * unitWidthSourceP;
-					widthDrainSidewallP = widthDrainP * 2
-										  + heightDrainP * (1+(numFoldedPMOS+1)%2) * numInput			// Drain sidewalls
-										  + heightDrainP * (1-(numFoldedPMOS+1)%2) * (numInput-1);	// Source sidewalls
-				}
-				if (widthNMOS > 0) {	// Drain cannot share between different NMOS
-					widthDrainN = unitWidthDrainN * numInput;
-					widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1+(numFoldedNMOS+1)%2) * numInput;
-				}
-			}
-			break;
-		case NAND:
-			// If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices
-			if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {
-				if (widthPMOS > 0) {  // The number of PMOS drains is not equal to the number of PMOS in parallel because drain can share
-					widthDrainP = unitWidthDrainP * (int)floor((double)(numInput+1)/2); // Use floor: assume num of source regions >= num of drain regions
-					widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1-(numInput+1)%2);
-				}
-				if (widthNMOS > 0) {  // No need to consider the source capacitance in series NMOS because here source and drain shares
-					widthDrainN = unitWidthDrainN * numInput;
-					widthDrainSidewallN = widthDrainN * 2 + heightDrainN;
-				}
-			} else {
-				if (widthPMOS > 0) {  // Drain cannot share between different PMOS
-					widthDrainP = unitWidthDrainP * numInput;
-					widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1+(numFoldedPMOS+1)%2) * numInput;
-				}
-				if (widthNMOS > 0) {  // Need to consider the source capacitance in series NMOS (excluding the bottom one)
-					widthDrainN = unitWidthDrainN * numInput + (numInput-1) * unitWidthSourceN;
-					widthDrainSidewallN = widthDrainN * 2
-										  + heightDrainN * (1+(numFoldedNMOS+1)%2) * numInput         // Drain sidewalls
-										  + heightDrainN * (1-(numFoldedNMOS+1)%2) * (numInput-1);    // Source sidewalls
-				}
-			}
-			break;
-		default:
-			widthDrainN = widthDrainP = widthDrainSidewallP = widthDrainSidewallN = 0;
-		}
-		/* Junction capacitance */
-		double capDrainBottomN = widthDrainN * heightDrainN * tech.capJunction;
-		double capDrainBottomP = widthDrainP * heightDrainP * tech.capJunction;
+            if (widthPMOS > 0) {
+                if (widthPMOS <= maxWidthPMOS) { /* No folding */
+                    unitWidthDrainP = tech.featureSize * MIN_GAP_BET_GATE_POLY;
+                    unitWidthSourceP = unitWidthDrainP;
+                    heightDrainP = widthPMOS;
+                } else {    /* Folding */
+                    numFoldedPMOS = (int)(ceil(widthPMOS / maxWidthPMOS));
+                    unitWidthDrainP = (int)ceil((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;    // Num of drain fingers >= num of source fingers
+                    unitWidthSourceP = (int)floor((double)(numFoldedPMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
+                    heightDrainP = maxWidthPMOS;
+                }
+            } else {
+                unitWidthDrainP = 0;
+                unitWidthSourceP = 0;
+                heightDrainP = 0;
+            }
+            if (widthNMOS > 0) {
+                if (widthNMOS <= maxWidthNMOS) { /* No folding */
+                    unitWidthDrainN = tech.featureSize * MIN_GAP_BET_GATE_POLY;
+                    unitWidthSourceN = unitWidthDrainN;
+                    heightDrainN = widthNMOS;
+                } else {    /* Folding */
+                    numFoldedNMOS = (int)(ceil(widthNMOS / maxWidthNMOS));
+                    unitWidthDrainN = (int)ceil((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
+                    unitWidthSourceN = (int)floor((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY;
+                    heightDrainN = maxWidthNMOS;
+                }
+            } else {
+                unitWidthDrainN = 0;
+                unitWidthSourceN = 0;
+                heightDrainN = 0;
+            }
 
-		/* Sidewall capacitance */	// FIXME
-		double capDrainSidewallN, capDrainSidewallP;
-		capDrainSidewallP = widthDrainSidewallP * tech.capSidewall;
-		capDrainSidewallN = widthDrainSidewallN * tech.capSidewall;
+        } else { //FinFET & GAA
 
-		/* Drain to channel capacitance */	// FIXME
-		double capDrainToChannelN = numFoldedNMOS * heightDrainN * tech.capDrainToChannel;
-		double capDrainToChannelP = numFoldedPMOS * heightDrainP * tech.capDrainToChannel;
+        /*
+            if (ratio == 0) {   
+                maxNumPFin = 0;
+                maxNumNFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
+            } else if (ratio == 1) {    /
+                maxNumPFin = (int)(floor((heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
+                maxNumNFin = 0;
+            } else {
+                maxNumPFin = (int)(floor(ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
+                maxNumNFin = (int)(floor( (1 - ratio) * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize) / tech.PitchFin)) + 1;
+            }
+        */
+
+        double modified_POLY_WIDTH_FINFET= POLY_WIDTH_FINFET;
+        double CPP_advanced = POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET;
+        double modified_MIN_GAP_BET_GATE_POLY_FINFET;
+
+        // replaced with the following code
+        if (tech.featureSize == 14 * 1e-9) { // adding more cases 
+            maxNumPFin = maxNumNFin = 4; // changed from 3 to 4
+        } else if (tech.featureSize == 10 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_10nm;
+            CPP_advanced = CPP_10nm;
+        } else if (tech.featureSize == 7 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_7nm;
+            CPP_advanced = CPP_7nm;
+        } else if (tech.featureSize == 5 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_5nm;
+            CPP_advanced = CPP_5nm;
+        } else if (tech.featureSize == 3 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_3nm;
+            CPP_advanced = CPP_3nm;
+        } else if (tech.featureSize == 2 * 1e-9) {
+            maxNumSheet = 8;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_2nm;
+            CPP_advanced = CPP_2nm;
+        } else if (tech.featureSize == 1 * 1e-9) {
+            maxNumSheet = 16;
+            modified_POLY_WIDTH_FINFET= POLY_WIDTH_1nm;
+            CPP_advanced = CPP_1nm;
+        } 
+
+        modified_MIN_GAP_BET_GATE_POLY_FINFET= CPP_advanced-modified_POLY_WIDTH_FINFET; 
+
+        if (tech.featureSize < 22 * 1e-9  && tech.featureSize >= 3 * 1e-9){
+            int NumPFin = (int)(ceil(widthPMOS/(tech.PitchFin)));
+            if (NumPFin > 0) {
+                if (NumPFin <= maxNumPFin) { /* No folding */
+                    unitWidthDrainP = tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceP = unitWidthDrainP;
+                    heightDrainP = tech.widthFin;
+                } else {    /* Folding */
+                    numFoldedPMOS = (int)(ceil(NumPFin / maxNumPFin));
+                    unitWidthDrainP = (int)ceil((double)(numFoldedPMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceP = (int)floor((double)(numFoldedPMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    heightDrainP = tech.widthFin; // modified from heightDrainP = (maxNumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
+                }
+            } else {
+                unitWidthDrainP = 0;
+                unitWidthSourceP = 0;
+                heightDrainP = 0;
+            }
+
+            int NumNFin = (int)(ceil(widthNMOS/(tech.PitchFin)));
+
+            if (NumNFin > 0) {
+                if (NumNFin <= maxNumNFin) { /* No folding */
+                    unitWidthDrainN = tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceN = unitWidthDrainN;
+                    heightDrainN = tech.widthFin;
+                } else {    /* Folding */
+                    numFoldedNMOS = (int)(ceil(NumNFin / maxNumNFin));
+                    unitWidthDrainN = (int)ceil((double)(numFoldedNMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceN = (int)floor((double)(numFoldedNMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    heightDrainN = tech.widthFin; // modified from heightDrainN = (maxNumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
+                }
+            } else {
+                unitWidthDrainN = 0;
+                unitWidthSourceN = 0;
+                heightDrainN = 0;
+            }
+        }
+        else {
+            int NumPSheet = (int)(ceil(widthPMOS));
+
+            if (NumPSheet > 0) {
+                if (NumPSheet <= maxNumSheet) { /* No folding */
+                    unitWidthDrainP = tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceP = unitWidthDrainP;
+                    heightDrainP = tech.widthFin;
+                } else {    /* Folding */
+                    numFoldedPMOS = (int)(ceil(NumPSheet/ maxNumSheet));
+                    unitWidthDrainP = (int)ceil((double)(numFoldedPMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceP = (int)floor((double)(numFoldedPMOS+1)/2) * tech.featureSize * modified_MIN_GAP_BET_GATE_POLY_FINFET;
+                    heightDrainP = tech.widthFin; // modified from heightDrainP = (maxNumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
+                }
+            } else {
+                unitWidthDrainP = 0;
+                unitWidthSourceP = 0;
+                heightDrainP = 0;
+            }
+
+            int NumNSheet  = (int)(ceil(widthNMOS));
+
+            if (NumNSheet > 0) {
+                if (NumNSheet <= maxNumSheet) { /* No folding */
+                    unitWidthDrainN = tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceN = unitWidthDrainN;
+                    heightDrainN = tech.widthFin;
+                } else {    /* Folding */
+                    numFoldedNMOS = (int)(ceil(NumNSheet / maxNumSheet));
+                    unitWidthDrainN = (int)ceil((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
+                    unitWidthSourceN = (int)floor((double)(numFoldedNMOS+1)/2) * tech.featureSize * MIN_GAP_BET_GATE_POLY_FINFET;
+                    heightDrainN = tech.widthFin; // modified from heightDrainN = (maxNumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
+                }
+            } else {
+                unitWidthDrainN = 0;
+                unitWidthSourceN = 0;
+                heightDrainN = 0;
+            }
+
+        }
+        }
+
+        switch (gateType) {
+        case INV:
+            if (widthPMOS > 0) {
+                widthDrainP = unitWidthDrainP;
+                // Folding=1: both drain and source has 1 side; folding=2: drain has 2 sides and source has 0 side... etc
+                widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1+(numFoldedPMOS+1)%2);
+            }
+            if (widthNMOS > 0) {
+                widthDrainN = unitWidthDrainN;
+                widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1+(numFoldedPMOS+1)%2);
+            }
+            break;
+        case NOR:
+            // If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices
+            if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {
+                if (widthPMOS > 0) {    // No need to consider the source capacitance in series PMOS because here source and drain shares
+                    widthDrainP = unitWidthDrainP * numInput;
+                    widthDrainSidewallP = widthDrainP * 2 + heightDrainP;
+                }
+                if (widthNMOS > 0) {    // The number of NMOS drains is not equal to the number of NMOS in parallel because drain can share
+                    widthDrainN = unitWidthDrainN * (int)floor((double)(numInput+1)/2); // Use floor: assume num of source regions >= num of drain regions
+                    widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1-(numInput+1)%2);
+                }
+            } else {
+                if (widthPMOS > 0) {    // Need to consider the source capacitance in series PMOS (excluding the top one)
+                    widthDrainP = unitWidthDrainP * numInput + (numInput-1) * unitWidthSourceP;
+                    widthDrainSidewallP = widthDrainP * 2
+                                          + heightDrainP * (1+(numFoldedPMOS+1)%2) * numInput           // Drain sidewalls
+                                          + heightDrainP * (1-(numFoldedPMOS+1)%2) * (numInput-1);  // Source sidewalls
+                }
+                if (widthNMOS > 0) {    // Drain cannot share between different NMOS
+                    widthDrainN = unitWidthDrainN * numInput;
+                    widthDrainSidewallN = widthDrainN * 2 + heightDrainN * (1+(numFoldedNMOS+1)%2) * numInput;
+                }
+            }
+            break;
+        case NAND:
+            // If either PMOS or NMOS has folding, there is no source/drain sharing among different PMOS and NMOS devices
+            if (numFoldedPMOS == 1 && numFoldedNMOS == 1) {
+                if (widthPMOS > 0) {  // The number of PMOS drains is not equal to the number of PMOS in parallel because drain can share
+                    widthDrainP = unitWidthDrainP * (int)floor((double)(numInput+1)/2); // Use floor: assume num of source regions >= num of drain regions
+                    widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1-(numInput+1)%2);
+                }
+                if (widthNMOS > 0) {  // No need to consider the source capacitance in series NMOS because here source and drain shares
+                    widthDrainN = unitWidthDrainN * numInput;
+                    widthDrainSidewallN = widthDrainN * 2 + heightDrainN;
+                }
+            } else {
+                if (widthPMOS > 0) {  // Drain cannot share between different PMOS
+                    widthDrainP = unitWidthDrainP * numInput;
+                    widthDrainSidewallP = widthDrainP * 2 + heightDrainP * (1+(numFoldedPMOS+1)%2) * numInput;
+                }
+                if (widthNMOS > 0) {  // Need to consider the source capacitance in series NMOS (excluding the bottom one)
+                    widthDrainN = unitWidthDrainN * numInput + (numInput-1) * unitWidthSourceN;
+                    widthDrainSidewallN = widthDrainN * 2
+                                          + heightDrainN * (1+(numFoldedNMOS+1)%2) * numInput         // Drain sidewalls
+                                          + heightDrainN * (1-(numFoldedNMOS+1)%2) * (numInput-1);    // Source sidewalls
+                }
+            }
+            break;
+        default:
+            widthDrainN = widthDrainP = widthDrainSidewallP = widthDrainSidewallN = 0;
+        }
+        /* Junction capacitance */
+        double capDrainBottomN = widthDrainN * heightDrainN * tech.capJunction;
+        double capDrainBottomP = widthDrainP * heightDrainP * tech.capJunction;
+
+        /* Sidewall capacitance */  // FIXME
+        double capDrainSidewallN, capDrainSidewallP;
+        capDrainSidewallP = widthDrainSidewallP * tech.capSidewall;
+        capDrainSidewallN = widthDrainSidewallN * tech.capSidewall;
+
+        /* Drain to channel capacitance */  // FIXME
+        double capDrainToChannelN = numFoldedNMOS * heightDrainN * tech.capDrainToChannel;
+        double capDrainToChannelP = numFoldedPMOS * heightDrainP * tech.capDrainToChannel;
    
         *(capOutput) = capDrainBottomN + capDrainBottomP + capDrainSidewallN + capDrainSidewallP + capDrainToChannelN + capDrainToChannelP;
-	}
+    }
 }
-
 
 double CalculateDrainCap(
     double width, int type,
@@ -437,18 +702,25 @@ double CalculateGateLeakage(
     double *leakN = tech.currentOffNmos;
     double *leakP = tech.currentOffPmos;
     double leakageN, leakageP;
-	
-	double widthNMOSEff, widthPMOSEff;
-	if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
-		widthNMOSEff = widthNMOS;
-		widthPMOSEff = widthPMOS;
-	} else {// finfet
-		widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
-		widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
-		widthNMOSEff = ceil(widthNMOS/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
-		widthPMOSEff = ceil(widthPMOS/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
-	}
-	
+    
+    double widthNMOSEff, widthPMOSEff;
+
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
+        widthNMOSEff = widthNMOS;
+        widthPMOSEff = widthPMOS;
+    } else if (tech.featureSize < 22 * 1e-9  && tech.featureSize >= 3 * 1e-9 ) {// up to FinFET 7 nm
+        widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
+        widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
+        widthNMOSEff = ceil(widthNMOS/tech.PitchFin)*(tech.effective_width);
+        widthPMOSEff = ceil(widthPMOS/tech.PitchFin)*(tech.effective_width);
+    }
+    else {// 5 nm and beyond case
+        widthNMOS*=1/(2 * tech.featureSize);
+        widthPMOS*=1/(2 * tech.featureSize);
+        widthNMOSEff = ceil(widthNMOS)*tech.effective_width;
+        widthPMOSEff = ceil(widthPMOS)*tech.effective_width;
+    }
+    
     switch (gateType) {
     case INV:
         leakageN = widthNMOSEff * leakN[tempIndex];
@@ -482,30 +754,36 @@ double CalculateOnResistance(double width, int type, double temperature, Technol
         cout<<"Error: Temperature is out of range"<<endl;
         exit(-1);
     }
-	double widthEff = 0;
-	if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
-		widthEff = width;
-	} else {
-		width *= tech.PitchFin/(2 * tech.featureSize);
-		widthEff = ceil(width/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
-	}
+
+    double widthEff = 0;
+
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
+        widthEff = width;
+    } else if (tech.featureSize < 22 * 1e-9  && tech.featureSize >=  3 * 1e-9 ) {// up to FinFET 7 nm
+        width *= tech.PitchFin/(2 * tech.featureSize);
+        widthEff = ceil(width/tech.PitchFin)*(tech.effective_width);
+    } else { // 5 nm and beyond case
+        width *=1/(2 * tech.featureSize);
+        widthEff = ceil(width)*tech.effective_width;
+    }
+
     if (type == NMOS)
         r = tech.effectiveResistanceMultiplier * tech.vdd / (tech.currentOnNmos[tempIndex] * widthEff);
     else
         r = tech.effectiveResistanceMultiplier * tech.vdd / (tech.currentOnPmos[tempIndex] * widthEff);
-	
+    
     return r;
 }
 
-double CalculateTransconductance(double width, int type, Technology tech) {
+double CalculateTransconductance(double width, int type, Technology tech) { // not used 
     double gm;
-	double widthEff = 0;
-	if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
-		widthEff = width;
-	} else {
-		width *= tech.PitchFin/(2 * tech.featureSize);
-		widthEff = ceil(width/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
-	}
+    double widthEff = 0;
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {
+        widthEff = width;
+    } else {
+        width *= tech.PitchFin/(2 * tech.featureSize);
+        widthEff = ceil(width/tech.PitchFin)*(2*tech.heightFin + tech.widthFin);
+    }
     if (type == NMOS) {
         gm = (2*tech.current_gmNmos)*widthEff/(0.7*tech.vdd-tech.vth);
     } else {//type==PMOS
@@ -516,8 +794,8 @@ double CalculateTransconductance(double width, int type, Technology tech) {
 
 double horowitz(double tr, double beta, double rampInput, double *rampOutput) {
     double alpha = 1 / rampInput / tr;
-    double vs = 0.5;	/* Normalized switching voltage */
-    beta = 0.5;	// Just use beta=0.5 as CACTI because we do not want to consider gm anymore
+    double vs = 0.5;    /* Normalized switching voltage */
+    beta = 0.5; // Just use beta=0.5 as CACTI because we do not want to consider gm anymore
     // Need to delete this input argument in the future
     double result = tr * sqrt(log(vs) * log(vs) + 2 * alpha * beta * (1 - vs));
     if (rampOutput)
@@ -525,90 +803,187 @@ double horowitz(double tr, double beta, double rampInput, double *rampOutput) {
     return result;
 }
 
-double CalculatePassGateArea(	// Calculate layout area, height and width of pass gate given the number of folding on the pass gate width
+double CalculatePassGateArea(   // Calculate layout area, height and width of pass gate given the number of folding on the pass gate width
     // This function is for pass gate where the cell height can change. For normal standard cells, use CalculateGateArea() where the cell height is fixed
     double widthNMOS, double widthPMOS, Technology tech, int numFold, double *height, double *width) {
 
-    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {	// Bulk
-		*width = (numFold + 1) * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;	// No folding means numFold=1
+        // define constants again 
+        double modified_MIN_GAP_BET_P_AND_N_DIFFS;
+        double CPP_advanced = POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET;
+        double outer_height_region_advanced; 
+
+        // replaced with the following code
+        if (tech.featureSize == 14 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_14nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_14nm;
+        } else if (tech.featureSize == 10 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_10nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_10nm;
+            CPP_advanced = CPP_10nm;
+        } else if (tech.featureSize == 7 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_7nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_7nm;
+            CPP_advanced = CPP_7nm;
+        } else if (tech.featureSize == 5 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_5nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_5nm;
+            CPP_advanced = CPP_5nm;
+        } else if (tech.featureSize == 3 * 1e-9) {
+            CPP_advanced = CPP_3nm;
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_3nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_3nm;
+        } else if (tech.featureSize == 2 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_2nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_2nm;
+            CPP_advanced = CPP_2nm;
+        } else if (tech.featureSize == 1 * 1e-9) {
+            modified_MIN_GAP_BET_P_AND_N_DIFFS=MIN_GAP_BET_P_AND_N_DIFFS_1nm;
+            outer_height_region_advanced = OUTER_HEIGHT_REGION_1nm;
+            CPP_advanced = CPP_1nm;
+        } 
+
+    
+
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+        *width = (numFold + 1) * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;   // No folding means numFold=1
         *height = widthPMOS/numFold + widthNMOS/numFold + MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize
                   + (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
-    } else {	// FinFET
-		*width = (numFold + 1) * (POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET) * tech.featureSize;	// No folding means numFold=1
-		widthNMOS *= tech.PitchFin/(2 * tech.featureSize);
-		widthPMOS *= tech.PitchFin/(2 * tech.featureSize);
-        int totalNumPFin = (int)(ceil(widthPMOS/(2 * tech.heightFin + tech.widthFin)));
-        int totalNumNFin = (int)(ceil(widthNMOS/(2 * tech.heightFin + tech.widthFin)));
+
+    } else if (tech.featureSize >= 3 * 1e-9 ) {// up to FinFET 3 nm
+
+    // FinFET
+
+        *width = (numFold + 1) * (CPP_advanced) * tech.featureSize; // No folding means numFold=1
+
+        /* seems to be the right code 
+        int totalNumPFin = (int)(ceil(widthPMOS/tech.effective_width));
+        int totalNumNFin = (int)(ceil(widthNMOS/tech.effective_width));
+        */
+        int totalNumPFin = (int)(ceil(widthPMOS/(2 * tech.featureSize)));
+        int totalNumNFin = (int)(ceil(widthNMOS/(2 * tech.featureSize)));
         int NumPFin = (int)(ceil((double)totalNumPFin/numFold));
         int NumNFin = (int)(ceil((double)totalNumNFin/numFold));
         double heightRegionP = (NumPFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
         double heightRegionN = (NumNFin-1) * tech.PitchFin + 2 * tech.widthFin/2;
-        *height = heightRegionP + heightRegionN + MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize
-                  + (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
+        *height = heightRegionP + heightRegionN + modified_MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize
+                  + outer_height_region_advanced * tech.featureSize;
     }
+    else{ // GAA // Assume using the conventional way for GAA
+
+        *width = (numFold + 1) * (CPP_advanced) * tech.featureSize; // No folding means numFold=1
+        widthNMOS *= 1/(2 * tech.featureSize);
+        widthPMOS *= 1/(2 * tech.featureSize);
+        int totalNumPSheet = (int)(ceil(widthPMOS));
+        int totalNumNSheet = (int)(ceil(widthNMOS));
+        int NumPSheet = (int)(ceil((double)totalNumPSheet/numFold));
+        int NumNSheet = (int)(ceil((double)totalNumNSheet/numFold));
+        double heightRegionP = ( NumPSheet-1) * tech.PitchFin + 2 * tech.widthFin/2;
+        double heightRegionN = (NumNSheet-1) * tech.PitchFin + 2 * tech.widthFin/2;
+        *height = heightRegionP + heightRegionN + modified_MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize
+                  + outer_height_region_advanced * tech.featureSize;
+
+    }
+    
     return (*width)*(*height);
 }
 
-double NonlinearResistance(double R, double NL, double Vw, double Vr, double V) {	// Nonlinearity is the current ratio between Vw and V, and R means the resistance at Vr
+double NonlinearResistance(double R, double NL, double Vw, double Vr, double V) {   // Nonlinearity is the current ratio between Vw and V, and R means the resistance at Vr
     double R_NL = R * V/Vr * pow(NL, (Vr-V)/(Vw/2));
     return R_NL;
 }
 
 /* enlarge min size transister to max with same layout area */
-void EnlargeSize(double *widthNMOS, double *widthPMOS, double heightTransistorRegion, Technology tech) {	
-    double	ratio = *widthPMOS / (*widthPMOS + *widthNMOS);
+void EnlargeSize(double *widthNMOS, double *widthPMOS, double heightTransistorRegion, Technology tech) {    
+    double  ratio = *widthPMOS / (*widthPMOS + *widthNMOS);
     double maxWidthPMOS, maxWidthNMOS;
-    int maxNumPFin, maxNumNFin;	/* Max number of fins for the specified cell height */
+    int maxNumPFin, maxNumNFin; /* Max number of fins for the specified cell height */
+    int maxNumSheet;    /* Max number of sheets for the specified cell height */ 
     double unitWidthRegionP, unitWidthRegionN;
     double widthRegionP, widthRegionN;
     double heightRegionP, heightRegionN;
     int numFoldedPMOS = 1, numFoldedNMOS = 1;
 
-    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) {	// Bulk
-        if (ratio == 0) {	/* no PMOS */
+    if (tech.featureSize >= 22 * 1e-9 || tech.transistorType != conventional) { // Bulk
+        if (ratio == 0) {   /* no PMOS */
             maxWidthPMOS = 0;
             maxWidthNMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
-        } else if (ratio == 1) {	/* no NMOS */
+        } else if (ratio == 1) {    /* no NMOS */
             maxWidthPMOS = heightTransistorRegion - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize;
             maxWidthNMOS = 0;
         } else {
             maxWidthPMOS = ratio * (heightTransistorRegion - MIN_GAP_BET_P_AND_N_DIFFS * tech.featureSize - (MIN_POLY_EXT_DIFF + MIN_GAP_BET_FIELD_POLY/2) * 2 * tech.featureSize);
             maxWidthNMOS = maxWidthPMOS / ratio * (1 - ratio);
         }
-		if (ratio == 0 && *widthNMOS < maxWidthNMOS){
-			*widthNMOS = maxWidthNMOS;
-		} else if (ratio == 1 && *widthPMOS < maxWidthPMOS){
-			*widthPMOS = maxWidthPMOS;
-		} else if (*widthPMOS > 0 && *widthPMOS < maxWidthPMOS && *widthNMOS > 0 && *widthNMOS < maxWidthNMOS){
-			*widthPMOS = maxWidthPMOS;
-			*widthNMOS = maxWidthNMOS;
-		}
-	} else { //FinFET
-		if (tech.featureSize == 14 * 1e-9) {
-			maxNumPFin = maxNumNFin = 3;
-		} else if (tech.featureSize == 10 * 1e-9) {
-			maxNumPFin = maxNumNFin = 3;
-		} else if (tech.featureSize == 7 * 1e-9) {
-			maxNumPFin = maxNumNFin = 2;
-		}
-        int NumPFin = (int)(ceil(*widthPMOS/(2 * tech.featureSize)));
-        int NumNFin = (int)(ceil(*widthNMOS/(2 * tech.featureSize)));
-		if (ratio == 0 && NumNFin <= maxNumNFin){
-			NumNFin = maxNumNFin;
-			*widthNMOS = (double) NumNFin * 2 * tech.featureSize;
-		} else if (ratio == 1 && NumPFin <= maxNumPFin){
-			NumPFin = maxNumPFin;
-			*widthPMOS = (double) NumPFin * 2 * tech.featureSize;
-		} else if (NumPFin > 0 && NumPFin <= maxNumPFin && NumNFin > 0 && NumNFin <= maxNumNFin){
-			if(ratio >= 0.5){		//pmos lager
-				NumPFin = maxNumPFin;
-				NumNFin = ceil(NumPFin / ratio * (1 - ratio));
-			}else{
-				NumNFin = maxNumNFin;
-				NumPFin = ceil(NumNFin / (1 - ratio) * ratio);
-			}
-			*widthNMOS = (double) NumNFin * 2 * tech.featureSize;			
-			*widthPMOS = (double) NumPFin * 2 * tech.featureSize;
-		}
-	}
+        if (ratio == 0 && *widthNMOS < maxWidthNMOS){
+            *widthNMOS = maxWidthNMOS;
+        } else if (ratio == 1 && *widthPMOS < maxWidthPMOS){
+            *widthPMOS = maxWidthPMOS;
+        } else if (*widthPMOS > 0 && *widthPMOS < maxWidthPMOS && *widthNMOS > 0 && *widthNMOS < maxWidthNMOS){
+            *widthPMOS = maxWidthPMOS;
+            *widthNMOS = maxWidthNMOS;
+        }
+    } else if (tech.featureSize < 22 * 1e-9  && tech.featureSize >=3  * 1e-9) { //FinFET
+        if (tech.featureSize == 14 * 1e-9) { // adding more cases 
+            maxNumPFin = maxNumNFin = 4; // changed from 3 to 4
+        } else if (tech.featureSize == 10 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+        } else if (tech.featureSize == 7 * 1e-9) {
+            maxNumPFin = maxNumNFin = 3;
+        } else if (tech.featureSize == 5 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+        } else if (tech.featureSize == 3 * 1e-9) {
+            maxNumPFin = maxNumNFin = 2;
+        } 
+
+    int NumPFin = (int)(ceil(*widthPMOS/(2 * tech.featureSize)));
+    int NumNFin = (int)(ceil(*widthNMOS/(2 * tech.featureSize)));
+        
+        if (ratio == 0 && NumNFin <= maxNumNFin){
+            NumNFin = maxNumNFin;
+            *widthNMOS = (double) NumNFin * 2 * tech.featureSize;
+        } else if (ratio == 1 && NumPFin <= maxNumPFin){
+            NumPFin = maxNumPFin;
+            *widthPMOS = (double) NumPFin * 2 * tech.featureSize;
+        } else if (NumPFin > 0 && NumPFin <= maxNumPFin && NumNFin > 0 && NumNFin <= maxNumNFin){
+            if(ratio >= 0.5){       //pmos lager
+                NumPFin = maxNumPFin;
+                NumNFin = ceil(NumPFin / ratio * (1 - ratio));
+            }else{
+                NumNFin = maxNumNFin;
+                NumPFin = ceil(NumNFin / (1 - ratio) * ratio);
+            }
+            *widthNMOS = (double) NumNFin * 2 * tech.featureSize;           
+            *widthPMOS = (double) NumPFin * 2 * tech.featureSize;
+        }
+    } else { //GAA -> extension to CFET may be necessary
+    // needs to check if enlargement for GAA or other device structures is reasonable
+    maxNumSheet=tech.max_sheet_num;
+
+    /* seems to be the right code 
+    int NumPSheet = (int)(ceil(*widthPMOS/(tech.effective_width)));
+    int NumNSheet = (int)(ceil(*widthNMOS/(tech.effective_width)));
+    */
+
+    int NumPSheet = (int)(ceil(*widthPMOS/( 2 * tech.featureSize)));
+    int NumNSheet = (int)(ceil(*widthNMOS/( 2 * tech.featureSize)));
+
+        if (ratio == 0 && NumNSheet <= maxNumSheet){
+            NumNSheet = maxNumSheet;
+            *widthNMOS = (double) NumNSheet * 2 * tech.featureSize;
+        } else if (ratio == 1 && NumPSheet <= maxNumPFin){
+            NumPSheet = maxNumSheet;
+            *widthPMOS = (double) NumPSheet * 2 * tech.featureSize;
+        } else if (NumPSheet > 0 && NumPSheet <= maxNumPFin && NumNSheet > 0 && NumNSheet <= maxNumSheet){
+            if(ratio >= 0.5){       //pmos lager
+                NumPSheet  = maxNumSheet;
+                NumNSheet = ceil(NumPSheet / ratio * (1 - ratio));
+            }else{
+                NumNSheet = maxNumSheet;
+                NumPSheet  = ceil(NumNSheet / (1 - ratio) * ratio);
+            }
+            *widthNMOS = (double) NumNSheet * 2 * tech.featureSize;         
+            *widthPMOS = (double) NumPSheet * 2 * tech.featureSize;
+        }
+    }
 }
+

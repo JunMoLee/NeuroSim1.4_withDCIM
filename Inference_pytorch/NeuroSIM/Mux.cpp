@@ -109,6 +109,24 @@ void Mux::CalculateArea(double _newHeight, double _newWidth, AreaModify _option)
 			if (_newWidth && _option==NONE) {
 				numRowTg = 1;
 				double minCellWidth = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize; // min standard cell width
+
+					if (tech.featureSize == 14 * 1e-9)
+					minCellWidth  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 10 * 1e-9)
+    				minCellWidth  *= (CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 7 * 1e-9)
+    				minCellWidth  *= (CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 5 * 1e-9)
+    				minCellWidth  *= (CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 3 * 1e-9)
+    				minCellWidth  *= (CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 2 * 1e-9)
+    				minCellWidth  *= (CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else if (tech.featureSize == 1 * 1e-9)
+    				minCellWidth  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				else
+    				minCellWidth  *= 1;
+
 				if (minCellWidth > _newWidth) {
 					cout << "[Mux] Error: Mux width is even larger than the assigned width !" << endl;
 				}

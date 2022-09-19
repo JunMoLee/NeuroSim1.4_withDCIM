@@ -93,6 +93,23 @@ void SwitchMatrix::CalculateArea(double _newHeight, double _newWidth, AreaModify
 		if (mode == ROW_MODE) {	// Connect to rows
 			double minCellHeight = MAX_TRANSISTOR_HEIGHT * tech.featureSize;
 
+			if (tech.featureSize == 14 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 10 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 7 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 5 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 3 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 2 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 1 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+			else
+			minCellHeight *= 1;
+
 			if (_newHeight && _option==NONE) {
 				if (_newHeight < minCellHeight) {
 					cout << "[SwitchMatrix] Error: pass gate height is even larger than the array height" << endl;
@@ -119,6 +136,24 @@ void SwitchMatrix::CalculateArea(double _newHeight, double _newWidth, AreaModify
 			if (_newWidth && _option==NONE) {
 				numRowTgPair = 1;
 				double minCellWidth = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize; // min standard cell width for 1 Tg
+
+				if (tech.featureSize == 14 * 1e-9)
+				minCellWidth  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 10 * 1e-9)
+				minCellWidth  *= (CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 7 * 1e-9)
+				minCellWidth  *= (CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 5 * 1e-9)
+				minCellWidth  *= (CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 3 * 1e-9)
+				minCellWidth  *= (CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 2 * 1e-9)
+				minCellWidth  *= (CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else if (tech.featureSize == 1 * 1e-9)
+				minCellWidth  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+				else
+				minCellWidth  *= 1;
+
 				if (minCellWidth > _newWidth) {
 					cout << "[SwitchMatrix] Error: pass gate width is even larger than the array width" << endl;
 				}
@@ -291,11 +326,9 @@ void SwitchMatrix::CalculatePower(double numRead, double numWrite, double activi
 		writeDynamicEnergy += dff.readDynamicEnergy;	// Use DFF read energy here because no write in the DFF module
 	}
 }
-
 void SwitchMatrix::PrintProperty(const char* str) {
 	FunctionUnit::PrintProperty(str);
 }
-
 void SwitchMatrix::SaveOutput(const char* str) {
 	FunctionUnit::SaveOutput(str);
 }

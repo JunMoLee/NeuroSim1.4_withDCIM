@@ -84,6 +84,25 @@ void WLDecoderOutput::CalculateArea(double _newHeight, double _newWidth, AreaMod
 	} else {
 		double hNor, wNor, hInv, wInv, hTg, wTg, hNmos, wNmos;
 		double minCellHeight = MAX_TRANSISTOR_HEIGHT * tech.featureSize;
+		
+			if (tech.featureSize == 14 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 10 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 7 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 5 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 3 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 2 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 1 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+			else
+			minCellHeight *= 1;
+
+
 		area = 0;
 		height = 0;
 		width = 0;

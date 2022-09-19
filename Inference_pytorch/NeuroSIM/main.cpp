@@ -493,7 +493,12 @@ int main(int argc, char * argv[]) {
     cout << "------------------------------ Simulation Performance --------------------------------" <<  endl;
 	cout << "Total Run-time of NeuroSim: " << duration.count() << " seconds" << endl;
 	cout << "------------------------------ Simulation Performance --------------------------------" <<  endl;
-	
+	/*
+	ofstream mywriteoutfile;
+	mywriteoutfile.open("output.csv"); 
+	mywriteoutfile<<param->technode<<", "<<chipArea*1e12<<", "<<chipAreaArray*1e12<<", "<<chipAreaIC*1e12<<", "<<chipAreaADC*1e12
+	*/
+
 	return 0;
 }
 

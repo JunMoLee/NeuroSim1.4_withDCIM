@@ -77,6 +77,41 @@ void DecoderDriver::CalculateArea(double _newHeight, double _newWidth, AreaModif
 		double hInv, wInv, hTg, wTg;
 		double minCellHeight = MAX_TRANSISTOR_HEIGHT * tech.featureSize;
 		double minCellWidth = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize;
+
+		if (tech.featureSize == 14 * 1e-9)
+		minCellHeight *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 10 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 7 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 5 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 3 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 2 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+    	else if (tech.featureSize == 1 * 1e-9)
+    	minCellHeight *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+    	else
+    	minCellHeight *= 1;
+
+		if (tech.featureSize == 14 * 1e-9)
+		minCellWidth  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 10 * 1e-9)
+    	minCellWidth  *= (CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 7 * 1e-9)
+    	minCellWidth  *= (CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 5 * 1e-9)
+    	minCellWidth  *= (CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 3 * 1e-9)
+    	minCellWidth  *= (CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 2 * 1e-9)
+    	minCellWidth  *= (CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else if (tech.featureSize == 1 * 1e-9)
+   		minCellWidth  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    	else
+    	minCellWidth  *= 1;
+
 		area = 0;
 		height = 0;
 		width = 0;
@@ -255,27 +290,4 @@ void DecoderDriver::CalculatePower(double numReadCellPerOp, double numWriteCellP
 			writeDynamicEnergy += (capInvInput + capTgGateN + capTgGateP) * tech.vdd * tech.vdd * numWriteCellPerOp;
 			writeDynamicEnergy += (capInvOutput + capTgGateP + capTgGateN) * tech.vdd * tech.vdd * numWriteCellPerOp;
 			if (mode == ROW_MODE) {	// Connects to rows
-				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage * cell.writeVoltage * numWriteCellPerOp;
-				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage/2 * cell.writeVoltage/2 * (numOutput-numWriteCellPerOp);
-			} else {	// Connects to columns
-				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage/2 * cell.writeVoltage/2 * (numOutput-numWriteCellPerOp);
-			}
-		}
-		writeDynamicEnergy *= numWrite;
-		if (!writeLatency) {
-			//cout << "[Decoder Driver] Error: Need to calculate write latency first" << endl;
-		} else {
-			writePower = writeDynamicEnergy/writeLatency;
-		}
-
-	}
-}
-
-void DecoderDriver::PrintProperty(const char* str) {
-	FunctionUnit::PrintProperty(str);
-}
-
-void DecoderDriver::SaveOutput(const char* str) {
-	FunctionUnit::SaveOutput(str);
-}
-
+				writeDynamic

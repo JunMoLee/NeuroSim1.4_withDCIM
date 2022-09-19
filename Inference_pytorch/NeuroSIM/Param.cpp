@@ -127,7 +127,7 @@ Param::Param() {
 	// technode: 22      --> wireWidth: 40
 	// technode: 14      --> wireWidth: 25
 	// technode: 10, 7   --> wireWidth: 18
-	technode = 22;                      // Technology
+	technode = 14;                      // Technology
 	featuresize = 40e-9;                // Wire width for subArray simulation
 	wireWidth = 40;                     // wireWidth of the cell for Accuracy calculation
 	globalBusDelayTolerance = 0.1;      // to relax bus delay for global H-Tree (chip level: communication among tiles), if tolerance is 0.1, the latency will be relax to (1+0.1)*optimalLatency (trade-off with energy)

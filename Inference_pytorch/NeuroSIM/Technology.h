@@ -78,7 +78,10 @@ public:
 	double currentOffPmos[101]; /* PMOS off current (from 300K to 400K), Unit: A/m */
     double current_gmNmos;		/* NMOS current at 0.7*vdd for gm calculation, Unit: A/m/V*/ 
     double current_gmPmos;		/* PMOS current at 0.7*vdd for gm calculation, Unit: A/m/V*/ 
-  
+	double max_sheet_num=0;
+	double thickness_sheet=0;
+	double width_sheet=0;
+	double effective_width=0;
 	double capPolywire;	/* Poly wire capacitance, Unit: F/m */
 };
 

@@ -94,6 +94,24 @@ void WLNewDecoderDriver::CalculateArea(double _newHeight, double _newWidth, Area
 	} else {
 		double hNand, wNand, hInv, wInv, hTg, wTg;
 		double minCellHeight = MAX_TRANSISTOR_HEIGHT * tech.featureSize;
+
+			if (tech.featureSize == 14 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 10 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 7 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 5 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 3 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 2 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 1 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+			else
+			minCellHeight *= 1;
+			
 		area = 0;
 		height = 0;
 		width = 0;
@@ -251,22 +269,4 @@ void WLNewDecoderDriver::CalculatePower(double numRead, double numWrite) {
 		readDynamicEnergy += capTgDrain * cell.readVoltage * cell.readVoltage;         // TG gate energy
 		readDynamicEnergy *= numRead;          // multiply reading operation times
 		
-		// Write dynamic energy (only one row activated)
-		writeDynamicEnergy += capNandInput * tech.vdd * tech.vdd;
-		writeDynamicEnergy += (capInvOutput + capTgGateN) * tech.vdd * tech.vdd;
-		writeDynamicEnergy += (capNandOutput + capTgGateN + capTgGateP) * tech.vdd * tech.vdd;     
-		writeDynamicEnergy += capTgDrain * cell.writeVoltage * cell.writeVoltage;    
-		writeDynamicEnergy *= numWrite;
-	}
-}
-
-void WLNewDecoderDriver::PrintProperty(const char* str) {
-	//cout << "WLNewDecoderDriver Properties:" << endl;
-	FunctionUnit::PrintProperty(str);
-	//cout << "Number of inverter stage: " << numStage << endl;
-}
-
-void WLNewDecoderDriver::SaveOutput(const char* str) {
-	FunctionUnit::SaveOutput(str);
-}
-
+		// Write dynamic energy
