@@ -290,4 +290,26 @@ void DecoderDriver::CalculatePower(double numReadCellPerOp, double numWriteCellP
 			writeDynamicEnergy += (capInvInput + capTgGateN + capTgGateP) * tech.vdd * tech.vdd * numWriteCellPerOp;
 			writeDynamicEnergy += (capInvOutput + capTgGateP + capTgGateN) * tech.vdd * tech.vdd * numWriteCellPerOp;
 			if (mode == ROW_MODE) {	// Connects to rows
-				writeDynamic
+				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage * cell.writeVoltage * numWriteCellPerOp;
+				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage/2 * cell.writeVoltage/2 * (numOutput-numWriteCellPerOp);
+			} else {	// Connects to columns
+				writeDynamicEnergy += (capTgDrain * 2) * cell.writeVoltage/2 * cell.writeVoltage/2 * (numOutput-numWriteCellPerOp);
+			}
+		}
+		writeDynamicEnergy *= numWrite;
+		if (!writeLatency) {
+			//cout << "[Decoder Driver] Error: Need to calculate write latency first" << endl;
+		} else {
+			writePower = writeDynamicEnergy/writeLatency;
+		}
+
+	}
+}
+
+void DecoderDriver::PrintProperty(const char* str) {
+	FunctionUnit::PrintProperty(str);
+}
+
+void DecoderDriver::SaveOutput(const char* str) {
+	FunctionUnit::SaveOutput(str);
+}
