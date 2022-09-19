@@ -269,4 +269,21 @@ void WLNewDecoderDriver::CalculatePower(double numRead, double numWrite) {
 		readDynamicEnergy += capTgDrain * cell.readVoltage * cell.readVoltage;         // TG gate energy
 		readDynamicEnergy *= numRead;          // multiply reading operation times
 		
-		// Write dynamic energy
+		// Write dynamic energy (only one row activated)
+		writeDynamicEnergy += capNandInput * tech.vdd * tech.vdd;
+		writeDynamicEnergy += (capInvOutput + capTgGateN) * tech.vdd * tech.vdd;
+		writeDynamicEnergy += (capNandOutput + capTgGateN + capTgGateP) * tech.vdd * tech.vdd;     
+		writeDynamicEnergy += capTgDrain * cell.writeVoltage * cell.writeVoltage;    
+		writeDynamicEnergy *= numWrite;
+	}
+}
+
+void WLNewDecoderDriver::PrintProperty(const char* str) {
+	//cout << "WLNewDecoderDriver Properties:" << endl;
+	FunctionUnit::PrintProperty(str);
+	//cout << "Number of inverter stage: " << numStage << endl;
+}
+
+void WLNewDecoderDriver::SaveOutput(const char* str) {
+	FunctionUnit::SaveOutput(str);
+}
