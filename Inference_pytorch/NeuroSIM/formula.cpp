@@ -212,18 +212,23 @@ double CalculateGateArea(     // Calculate layout area and width of logic gate g
         double temp_N=2*maxNumNFin;
         double temp_P_NS=2*maxNumPSheet;
         double temp_N_NS=2*maxNumNSheet;
-        
+
+        int temp_N_ratio;
+        int temp_P_ratio;
+        int temp_N_NS_ratio;
+        int temp_P_NS_ratio;
+
         if (ratio>0.5){
-        int temp_N_ratio=int (2*maxNumNFin* (1-ratio));
-        int temp_P_ratio= 2*maxNumPFin-temp_N_ratio
-        int temp_N_NS_ratio=int (2*maxNumNSheet* (1-ratio));
-        int temp_P_NS_ratio= 2*maxNumPSheet-temp_N_NS_ratio;
+        temp_N_ratio=int (2*maxNumNFin* (1-ratio));
+        temp_P_ratio= 2*maxNumPFin-temp_N_ratio;
+        temp_N_NS_ratio=int (2*maxNumNSheet* (1-ratio));
+        temp_P_NS_ratio= 2*maxNumPSheet-temp_N_NS_ratio;
         }
         else{
-        int temp_P_ratio=int (2*maxNumPFin* (ratio));
-        int temp_N_ratio= 2*maxNumNFin - temp_P_ratio
-        int temp_P_NS_ratio=int (2*maxNumPSheet * (ratio));
-        int temp_N_NS_ratio=int 2*maxNumNSheet - temp_P_NS_ratio;
+        temp_P_ratio=int (2*maxNumPFin* (ratio));
+        temp_N_ratio= 2*maxNumNFin - temp_P_ratio;
+        temp_P_NS_ratio=int (2*maxNumPSheet * (ratio));
+        temp_N_NS_ratio=2*maxNumNSheet - temp_P_NS_ratio;
         }
 
         if (temp_P_ratio==0) {temp_P_ratio +=1; temp_N_ratio = 2*maxNumPFin-temp_P_ratio;}
