@@ -218,10 +218,10 @@ double CalculateGateArea(     // Calculate layout area and width of logic gate g
         int temp_P_NS_ratio=int (2*maxNumPSheet * (ratio));
         int temp_N_NS_ratio=int (2*maxNumNSheet* (1-ratio));
 
-        if (temp_P_ratio==0) temp_P_ratio +=1;
-        if (temp_N_ratio==0) temp_N_ratio +=1;
-        if (temp_P_NS_ratio==0) temp_P_NS_ratio +=1;
-        if (temp_N_NS_ratio==0) temp_N_NS_ratio +=1;
+        if (temp_P_ratio==0) {temp_P_ratio +=1; temp_N_ratio = 2*maxNumPFin-temp_P_ratio;}
+        if (temp_N_ratio==0) {temp_N_ratio +=1; temp_P_ratio = 2*maxNumNFin-temp_N_ratio;}
+        if (temp_P_NS_ratio==0) {temp_P_NS_ratio +=1; temp_N_NS_ratio = 2*maxNumPFin-temp_P_NS_ratio;}
+        if (temp_N_NS_ratio==0) {temp_N_NS_ratio +=1; temp_P_NS_ratio = 2*maxNumNFin-temp_N_NS_ratio;}
 
         if (ratio == 0) {   /* no PFinFET */
             maxNumPFin = 0;
@@ -986,4 +986,3 @@ void EnlargeSize(double *widthNMOS, double *widthPMOS, double heightTransistorRe
         }
     }
 }
-
