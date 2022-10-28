@@ -71,10 +71,12 @@ void SwitchMatrix::Initialize(int _mode, int _numOutput, double _resTg, bool _ne
 	
 	// Why use pre-defined resTg? Becasue we want to define TG resistance according to loading and performance ...
 	
-	widthTgN = CalculateOnResistance(tech.featureSize, NMOS, inputParameter.temperature, tech) * tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
+	// Modified by Junmo for GAA/FinFET compatibility
+
+	widthTgN = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech) * tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
 	// R~(1/W), calculate actual TG width based on feature-sized TG resistance and given actual TG resistance 
 	
-	widthTgP = CalculateOnResistance(tech.featureSize, PMOS, inputParameter.temperature, tech) * tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
+	widthTgP = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech) * tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
 	// assuming resTgN = resTgP, so resTgN = resTgP = 2*resTg (connected in parallel)
 	
 	EnlargeSize(&widthTgN, &widthTgP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);

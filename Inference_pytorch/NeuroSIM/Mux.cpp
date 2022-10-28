@@ -64,10 +64,11 @@ void Mux::Initialize(int _numInput, int _numSelection, double _resTg, bool _FPGA
 		resTg = 1 / (1/CalculateOnResistance(widthTgN, NMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO 
 					+ 1/CalculateOnResistance(widthTgP, PMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO);
 	} else {
+		// modified by Junmo for GAA. FinFET compatibility - 220922
 		resTg = _resTg * IR_DROP_TOLERANCE;
-		widthTgN = CalculateOnResistance(tech.featureSize, NMOS, inputParameter.temperature, tech)
+		widthTgN = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech)
 								* tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
-		widthTgP = CalculateOnResistance(tech.featureSize, PMOS, inputParameter.temperature, tech)
+		widthTgP = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech)
 								* tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
 		EnlargeSize(&widthTgN, &widthTgP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
 		resTg = 1 / (1/CalculateOnResistance(widthTgN, NMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO 

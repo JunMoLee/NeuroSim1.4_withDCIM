@@ -646,6 +646,7 @@ vector<double> GetColumnResistance(const vector<double> &input, const vector<vec
 				} else {
 					columnG += 0;
 				}
+				
 			} else if (cell.memCellType == Type::FeFET) {
 				double totalWireResistance;
 				totalWireResistance = (double) 1.0/weight[i][j] + (j + 1) * param->wireResistanceRow + (weight.size() - i) * param->wireResistanceCol;

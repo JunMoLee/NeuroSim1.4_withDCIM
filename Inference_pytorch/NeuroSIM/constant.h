@@ -58,10 +58,10 @@
 // TSMC + IRDS version
 #define MAX_TRANSISTOR_HEIGHT_10nm 36 //TSMC
 #define MAX_TRANSISTOR_HEIGHT_7nm 42.8574 //TSMC
-#define MAX_TRANSISTOR_HEIGHT_5nm 45 //TSMC
-#define MAX_TRANSISTOR_HEIGHT_3nm  53.3 //IRDS
-#define MAX_TRANSISTOR_HEIGHT_2nm  69 //IRDS
-#define MAX_TRANSISTOR_HEIGHT_1nm  88 //IRDS
+#define MAX_TRANSISTOR_HEIGHT_5nm 36 //TSMC
+#define MAX_TRANSISTOR_HEIGHT_3nm  48 //IRDS
+#define MAX_TRANSISTOR_HEIGHT_2nm  57 //IRDS
+#define MAX_TRANSISTOR_HEIGHT_1nm  80 //IRDS
 
 
 /*
@@ -114,15 +114,30 @@
 #define CPP_2nm 42/2 // IMEC
 #define POLY_WIDTH_2nm 7 // IRDS
 #define CPP_1nm 40/1 // IMEC
-#define POLY_WIDTH_1nm 7 // IRDS
+#define POLY_WIDTH_1nm 12 // IRDS
 
 #define MIN_GAP_BET_CONTACT_POLY       0.7  //0.75
 #define CONTACT_SIZE                   1.3  //1
 #define MIN_WIDTH_POWER_RAIL           3.4  //2
 
+// set M2, M3 equal due to the scarcity of information
+#define M2_PITCH                       3.2  // along width
+#define M2_PITCH_14nm                       64/14 // IMEC and IRDS
+#define M2_PITCH_10nm                       48/10
+#define M2_PITCH_7nm                       40/7
+#define M2_PITCH_5nm                       28/5
+#define M2_PITCH_3nm                       21/3
+#define M2_PITCH_2nm                       16/2
+#define M2_PITCH_1nm                       16/1
 
-#define M2_PITCH                       3.2
-#define M3_PITCH                       2.8
+#define M3_PITCH                       2.8  // along height
+#define M3_PITCH_14nm                       64/14
+#define M3_PITCH_10nm                       48/10
+#define M3_PITCH_7nm                       40/7
+#define M3_PITCH_5nm                       28/5
+#define M3_PITCH_3nm                       21/3
+#define M3_PITCH_2nm                       16/2
+#define M3_PITCH_1nm                       16/1
 
 #define AVG_RATIO_LEAK_2INPUT_NAND 0.48
 #define AVG_RATIO_LEAK_3INPUT_NAND 0.31

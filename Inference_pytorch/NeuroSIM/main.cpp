@@ -476,6 +476,12 @@ int main(int argc, char * argv[]) {
 		cout << "Throughput TOPS (Layer-by-Layer Process): " << numComputation/(chipReadLatency*1e12) << endl;
 		cout << "Throughput FPS (Layer-by-Layer Process): " << 1/(chipReadLatency) << endl;
 		cout << "Compute efficiency TOPS/mm^2 (Layer-by-Layer Process): " << numComputation/(chipReadLatency*1e12)/(chipArea*1e6) << endl;
+		cout << "Subarray cell initial width: " << cell.widthInFeatureSize << endl;
+		cout << "Subarray cell initial height: " <<  cell.heightInFeatureSize<< endl;
+		cout << "Subarray cell minimum used width for design: " << param->minimumCellWidth << endl;
+		cout << "Subarray cell minimum used height for design: " << param->minimumCellHeight << endl;
+		cout << "Subarray cell final width for design: " << param->finalCellWidth << endl;
+		cout << "Subarray cell final height for design: " << param->finalCellHeight << endl;
 	} else {
 		if(param->validated){
 			cout << "Energy Efficiency TOPS/W (Pipelined Process): " << numComputation/(chipReadDynamicEnergy*1e12+chipLeakageEnergy*1e12)/param->zeta << endl;	// post-layout energy increase, zeta = 1.23 by default
@@ -485,6 +491,12 @@ int main(int argc, char * argv[]) {
 		cout << "Throughput TOPS (Pipelined Process): " << numComputation/(chipReadLatency*1e12) << endl;
 		cout << "Throughput FPS (Pipelined Process): " << 1/(chipReadLatency) << endl;
 		cout << "Compute efficiency TOPS/mm^2 (Pipelined Process): " << numComputation/(chipReadLatency*1e12)/(chipArea*1e6) << endl;
+		cout << "Subarray cell initial width: " << cell.widthInFeatureSize << endl;
+		cout << "Subarray cell initial height: " <<  cell.heightInFeatureSize << endl;
+		cout << "Subarray cell minimum used width for design: " << param->minimumCellWidth << endl;
+		cout << "Subarray cell minimum used height for design: " << param->minimumCellHeight << endl;
+		cout << "Subarray cell final width for design: " << param->finalCellWidth << endl;
+		cout << "Subarray cell final height for design: " << param->finalCellHeight << endl;
 	}
 	cout << "-------------------------------------- Hardware Performance Done --------------------------------------" <<  endl;
 	cout << endl;
@@ -493,11 +505,46 @@ int main(int argc, char * argv[]) {
     cout << "------------------------------ Simulation Performance --------------------------------" <<  endl;
 	cout << "Total Run-time of NeuroSim: " << duration.count() << " seconds" << endl;
 	cout << "------------------------------ Simulation Performance --------------------------------" <<  endl;
-	/*
-	ofstream mywriteoutfile;
-	mywriteoutfile.open("output.csv"); 
-	mywriteoutfile<<param->technode<<", "<<chipArea*1e12<<", "<<chipAreaArray*1e12<<", "<<chipAreaIC*1e12<<", "<<chipAreaADC*1e12
-	*/
+	
+	fstream read;
+	read.open("/home/junmo/DNN_NeuroSim_V1.3_modified/Inference_pytorch/NeuroSIM/Data_TechnologyUpdate/SRAM_final_lastbeforeSamsung_221001.csv",fstream::app); 	
+
+	read<<param->technode<<", "<<chipArea*1e12<<", "<<chipAreaArray*1e12<<", "<<chipAreaIC*1e12<<", ";
+	read<<chipAreaADC*1e12<<", "<<chipAreaAccum*1e12<<", "<<chipAreaOther*1e12<<", ";
+	read<<clkPeriod*1e9<<", ";
+	read<<chipReadLatency*1e9<<", ";
+	read<<chipReadDynamicEnergy*1e12<<", ";
+	read<<chipLeakageEnergy*1e12<<", ";
+	read<<chipLeakage*1e6<<", ";
+
+	read<<chipbufferLatency*1e9<<", ";
+	read<<chipbufferReadDynamicEnergy*1e12<<", ";
+	read<<chipicLatency*1e9 <<", ";
+	read<<chipicReadDynamicEnergy*1e12 <<", ";
+
+	read<<chipLatencyADC*1e9<<", ";
+	read<<chipLatencyAccum*1e9 <<", ";
+	read<<chipLatencyOther*1e9 <<", ";
+	read<<chipEnergyADC*1e12 <<", ";
+	read<<chipEnergyAccum*1e12<<", ";
+	read<<chipEnergyOther*1e12<<", ";
+
+	read<<numComputation/(chipReadDynamicEnergy*1e12+chipLeakageEnergy*1e12)/param->zeta<<", ";
+	read<<numComputation/(chipReadLatency*1e12)<<", ";
+	read<<1/(chipReadLatency) <<", ";
+	read<<numComputation/(chipReadLatency*1e12)/(chipArea*1e6) <<", ";
+
+	read<<cell.widthInFeatureSize<<", ";
+	read<<cell.heightInFeatureSize<<", ";
+	read<<param->minimumCellWidth<<", ";
+	read<<param->minimumCellHeight<<", ";
+	read<<param->finalCellWidth <<", ";
+	read<<param->finalCellHeight<<", ";
+	// read<<"max fin per GAA 2nm 3 1nm 4 (lateral 1)"<<endl;
+	//read<<"final"<<endl;
+	read<<"max fin per GAA"<<tech.max_fin_per_GAA<<"sheetnum"<<tech.max_sheet_num<<"finnum"<<tech.max_fin_num<<endl;
+
+	
 
 	return 0;
 }

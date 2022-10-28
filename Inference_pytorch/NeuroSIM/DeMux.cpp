@@ -60,9 +60,11 @@ void DeMux::Initialize(int _numInput, int numRow){
 
 	// TG
 	resTg = cell.resistanceOn / numRow * IR_DROP_TOLERANCE;
-	widthTgN = CalculateOnResistance(tech.featureSize, NMOS, inputParameter.temperature, tech)
+
+	// Modified by Junmo for FinFET, GAA compatibility
+	widthTgN = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech)
 							* tech.featureSize / (resTg*2);
-	widthTgP = CalculateOnResistance(tech.featureSize, PMOS, inputParameter.temperature, tech)
+	widthTgP = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech)
 							* tech.featureSize / (resTg*2);
 
 	initialized = true;

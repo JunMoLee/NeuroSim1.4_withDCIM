@@ -58,7 +58,7 @@ Param::Param() {
 	operationmode = 2;     		// 1: conventionalSequential (Use several multi-bit RRAM as one synapse)
 								// 2: conventionalParallel (Use several multi-bit RRAM as one synapse)
 	
-	memcelltype = 2;        	// 1: cell.memCellType = Type::SRAM
+	memcelltype = 1;        	// 1: cell.memCellType = Type::SRAM
 								// 2: cell.memCellType = Type::RRAM
 								// 3: cell.memCellType = Type::FeFET
 	
@@ -127,9 +127,44 @@ Param::Param() {
 	// technode: 22      --> wireWidth: 40
 	// technode: 14      --> wireWidth: 25
 	// technode: 10, 7   --> wireWidth: 18
-	technode = 14;                      // Technology
-	featuresize = 40e-9;                // Wire width for subArray simulation
-	wireWidth = 40;                     // wireWidth of the cell for Accuracy calculation
+	const int 
+tech=12
+;
+	switch (tech){
+		case 0: technode = 130; break;  
+		case 1:technode =  90; break;  
+		case 2: technode =  65; break;  
+		case 3: technode =  45; break;  
+		case 4: technode =  32; break;  
+		case 5: technode =  22; break; 
+		case 6:technode =  14; break;  
+		case 7: technode =  10; break;  
+		case 8: technode = 7; break;  
+		case 9: technode =  5; break;  
+		case 10: technode =  3; break; 
+		case 11: technode =  2; break;  
+		case 12:technode =  1; break; 
+	} 
+
+
+	switch (technode){
+		case 130: 	wireWidth=175; featuresize = wireWidth*1e-9; break;  
+		case 90: 	wireWidth=110; featuresize = wireWidth*1e-9; break;  
+		case 65:	wireWidth=105; featuresize = wireWidth*1e-9; break;  
+		case 45:	wireWidth=80; featuresize = wireWidth*1e-9; break;  
+		case 32:	wireWidth=56; featuresize = wireWidth*1e-9; break;  
+		case 22:	wireWidth=40; featuresize = wireWidth*1e-9; break; 
+		case 14:	wireWidth=25; featuresize = wireWidth*1e-9; break;  
+		case 10:	wireWidth=18; featuresize = wireWidth*1e-9; break;  
+		case 7:		wireWidth=18; featuresize = wireWidth*1e-9; break;  
+		case 5:		wireWidth=18; featuresize = wireWidth*1e-9; break;  
+		case 3:		wireWidth=18; featuresize = wireWidth*1e-9; break; 
+		case 2:		wireWidth=18; featuresize = wireWidth*1e-9; break;  
+		case 1:		wireWidth=18; featuresize = wireWidth*1e-9; break;  
+		case -1:	break;	
+		default:	exit(-1); puts("Wire width out of range"); 
+	}
+	
 	globalBusDelayTolerance = 0.1;      // to relax bus delay for global H-Tree (chip level: communication among tiles), if tolerance is 0.1, the latency will be relax to (1+0.1)*optimalLatency (trade-off with energy)
 	localBusDelayTolerance = 0.1;       // to relax bus delay for global H-Tree (tile level: communication among PEs), if tolerance is 0.1, the latency will be relax to (1+0.1)*optimalLatency (trade-off with energy)
 	treeFoldedRatio = 4;                // the H-Tree is assumed to be able to folding in layout (save area)
@@ -153,11 +188,64 @@ Param::Param() {
 	// SRAM cell size at 14nm: 300F^2
 	// SRAM cell size at 10nm: 400F^2
 	// SRAM cell size at 7nm: 600F^2
-	heightInFeatureSizeSRAM = 10;        // SRAM Cell height in feature size  
-	widthInFeatureSizeSRAM = 28;        // SRAM Cell width in feature size  
+
+	if (technode>14){
 	widthSRAMCellNMOS = 2;                            
 	widthSRAMCellPMOS = 1;
 	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 10;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 28;        // SRAM Cell width in feature size  
+	}
+	else if (technode==14){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 11.1;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 29.3;        // SRAM Cell width in feature size  
+	}
+	else if (technode==10){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 12.8;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 31.25;        // SRAM Cell width in feature size  
+	}
+	else if (technode==7){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 16;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 34.43;        // SRAM Cell width in feature size  
+	}
+	else if (technode==5){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 19.2;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 43.75;        // SRAM Cell width in feature size  
+	}
+	else if (technode==3){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 32;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 64;        // SRAM Cell width in feature size  
+	}
+	else if (technode==2){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 45;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 104;        // SRAM Cell width in feature size  
+	}
+	else if (technode==1){
+	widthSRAMCellNMOS = 1;                            
+	widthSRAMCellPMOS = 1;
+	widthAccessCMOS = 1;
+	heightInFeatureSizeSRAM = 56;        // SRAM Cell height in feature size  
+	widthInFeatureSizeSRAM = 91;        // SRAM Cell width in feature size  
+	}
+
 	minSenseVoltage = 0.1;
 	
 	/*** parameters for analog synaptic devices ***/

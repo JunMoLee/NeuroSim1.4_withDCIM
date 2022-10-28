@@ -196,8 +196,8 @@ void Sigmoid::CalculatePower(double numRead) {
 			readDynamicEnergy += wlDecoder.readDynamicEnergy + senseAmp.readDynamicEnergy;
 
 			// Array leakage (assume 2 INV)
-			leakage += CalculateGateLeakage(INV, 1, cell.widthSRAMCellNMOS * tech.featureSize,
-					cell.widthSRAMCellPMOS * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 2;
+			leakage += CalculateGateLeakage(INV, 1, cell.widthSRAMCellNMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize,
+					cell.widthSRAMCellPMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 2;
 			leakage *= numCell;
 			leakage += wlDecoder.leakage;
 			leakage += senseAmp.leakage;

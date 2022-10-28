@@ -61,10 +61,12 @@ void DecoderDriver::Initialize(int _mode, int _numOutput /* # of array rows/colu
 	EnlargeSize(&widthInvN, &widthInvP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
 
 	// TG
+
+	// Modified by Junmo for FinFET, GAA compatibility 
 	resTg = cell.resMemCellOn / numLoad * IR_DROP_TOLERANCE;
-	widthTgN = CalculateOnResistance(tech.featureSize, NMOS, inputParameter.temperature, tech)
+	widthTgN = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech)
 				* tech.featureSize / (resTg*2);
-	widthTgP = CalculateOnResistance(tech.featureSize, PMOS, inputParameter.temperature, tech)
+	widthTgP = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech)
 				* tech.featureSize / (resTg*2);;
 	
 	initialized = true;

@@ -85,6 +85,24 @@ void NewSwitchMatrix::CalculateArea(double _newHeight, double _newWidth, AreaMod
 		height = 0;
 		width = 0;
 		double minCellHeight = MAX_TRANSISTOR_HEIGHT * tech.featureSize;   // min standard cell height for 1 Tg 
+		
+			if (tech.featureSize == 14 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 10 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 7 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 5 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 3 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 2 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
+			else if (tech.featureSize == 1 * 1e-9)
+			minCellHeight *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
+			else
+			minCellHeight *= 1;
+
 		if (_newHeight && _option==NONE) {
 			if (_newHeight < minCellHeight) {
 				cout << "[NewSwitchMatrix] Error: pass gate height is even larger than the array height" << endl;

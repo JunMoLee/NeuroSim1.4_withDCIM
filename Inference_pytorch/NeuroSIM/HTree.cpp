@@ -68,6 +68,7 @@ void HTree::Initialize(int _numRow, int _numCol, double _delaytolerance, double 
 	unitLengthWireResistance = param->unitLengthWireResistance;
 	unitLengthWireCap = 0.2e-15/1e-6;;   // 0.2 fF/mm
 	
+
 	// define min INV resistance and capacitance to calculate repeater size
 	widthMinInvN = MIN_NMOS_SIZE * tech.featureSize;
 	widthMinInvP = tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;

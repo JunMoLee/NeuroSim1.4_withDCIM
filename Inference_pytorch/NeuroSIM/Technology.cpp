@@ -737,6 +737,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 3.7e-8;				
 				widthFin = 8e-9;
 				PitchFin = 4.8e-8;	
+				max_fin_num =4;
 				effective_width=widthFin+heightFin*2;		
 				phyGateLength = 2.2e-8;
 				capIdealGate = 1.2573e-9;
@@ -796,6 +797,10 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 3.7e-8;
 				widthFin = 8e-9;
 				PitchFin = 4.8e-8;
+				const int 
+fn=10
+;
+				max_fin_num =fn;
 				effective_width=widthFin+heightFin*2;
 				phyGateLength = 2.2e-8;
 				capIdealGate = 1.0572e-9;
@@ -857,6 +862,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 4.2e-8;
 				widthFin = 6e-9;
 				PitchFin = 3.6e-8;	
+				max_fin_num =3;
 				effective_width=widthFin+heightFin*2;		
 				phyGateLength = 2.0e-8;
 				capIdealGate = 1.1418e-9;
@@ -916,6 +922,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 4.2e-8;		
 				widthFin = 6e-9;		
 				PitchFin = 3.6e-8;	
+				max_fin_num =3;
 				effective_width=widthFin+heightFin*2;			
 				phyGateLength = 2e-8;	
 				capIdealGate = 9.418984e-10;
@@ -977,6 +984,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 5.2e-8;
 				widthFin = 6e-9;
 				PitchFin = 3.0e-8;	
+				max_fin_num =3;
 				effective_width=widthFin+heightFin*2;		
 				phyGateLength = 1.8e-8;
 				capIdealGate = 1.0487e-9;
@@ -1036,6 +1044,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 5.2e-8;
 				widthFin = 6e-9;
 				PitchFin = 3.0e-8;		
+				max_fin_num =3;
 				effective_width=widthFin+heightFin*2;	
 				phyGateLength = 1.8e-8;
 				capIdealGate = 8.49489e-10;
@@ -1098,6 +1107,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				heightFin = 5.2e-8;
 				widthFin = 6e-9;
 				PitchFin = 3.0e-8;	
+				max_fin_num =2;
 				effective_width=widthFin+heightFin*2;		
 				phyGateLength = 1.8e-8;
 				capIdealGate = 1.0487e-9;
@@ -1153,16 +1163,17 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 			} else {
 				vdd = 0.7;
 				vth = 402.5252e-3;
-				effective_width = 107*1e-9;	
+				effective_width = 106*1e-9;	
 				widthFin=6e-9; // estimate for simulation
 				PitchFin=28e-9;	
+				max_fin_num =2;
 				phyGateLength = 2.0e-8;
 				capIdealGate = 0.000000000627545455;
 				capFringe = 0;
 				effectiveResistanceMultiplier = 1.73;	/* from CACTI */
 				current_gmNmos=8.22E+02;
 				current_gmPmos=1.45E+02;			
-				currentOnNmos[0]  = 484;
+				currentOnNmos[0]  = 840.54; // 579;
 				currentOnNmos[10] = 786; 
 				currentOnNmos[20] = 750; 
 				currentOnNmos[30] = 716; 
@@ -1213,8 +1224,9 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				vdd = 0.7;
 				vth = 192.2339e-3;
 				heightFin = 5.2e-8;
-				widthFin = 6e-9;
-				PitchFin = 3.0e-8;			
+				widthFin = 5e-9;
+				PitchFin = 3.0e-8;	
+				max_fin_num =2;		
 				phyGateLength = 1.8e-8;
 				capIdealGate = 1.0487e-9;
 				capFringe = 0;
@@ -1270,15 +1282,16 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				vdd = 0.7;
 				vth = 402.5252e-3;
 				effective_width = 101*1e-9;
-				widthFin=6e-9;  // estimate for simulation 		
+				widthFin=5e-9;  // estimate for simulation 		
 				PitchFin=24e-9;	
+				max_fin_num =2;	
 				phyGateLength = 1.8e-8;
 				capIdealGate = 0.00000000062127;
 				capFringe = 0;
 				effectiveResistanceMultiplier = 1.73;	/* from CACTI */
 				current_gmNmos=8.22E+02;
 				current_gmPmos=1.45E+02;			
-				currentOnNmos[0]  = 874;
+				currentOnNmos[0]  = 934.90;
 				currentOnNmos[10] = 786; 
 				currentOnNmos[20] = 750; 
 				currentOnNmos[30] = 716; 
@@ -1383,10 +1396,15 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				currentOffPmos[90] = 3.0295      ;
 				currentOffPmos[100]= 4.0674      ;
 				pnSizeRatio = (int)(currentOnNmos[0]/currentOnPmos[0]);
-			} else {
+			} else { // 2 nm
 				vdd = 0.65;
 				vth = 402.5252e-3;
-				max_sheet_num=8;
+const int 
+sn=2
+;
+				max_fin_per_GAA=1;
+				max_sheet_num=3;
+				
 				thickness_sheet=6*1e-9;	;
 				width_sheet=15*1e-9;	;
 				PitchFin=26e-9;		
@@ -1398,7 +1416,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				effectiveResistanceMultiplier = 1.73;	/* from CACTI */
 				current_gmNmos=8.22E+02;
 				current_gmPmos=1.45E+02;			
-				currentOnNmos[0]  = 602;
+				currentOnNmos[0]  = 873.93;
 				currentOnNmos[10] = 786; 
 				currentOnNmos[20] = 750; 
 				currentOnNmos[30] = 716; 
@@ -1506,7 +1524,12 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 			} else {
 				vdd = 0.65;
 				vth = 402.5252e-3;
-				max_sheet_num=8;
+const int 
+sn=9
+;
+				max_fin_per_GAA=1;
+				max_sheet_num=sn;
+				
 				thickness_sheet=6*1e-9;	;
 				width_sheet=10*1e-9;	;	
 				PitchFin=24e-9;	
@@ -1518,7 +1541,7 @@ void Technology::Initialize(int _featureSizeInNano, DeviceRoadmap _deviceRoadmap
 				effectiveResistanceMultiplier = 1.73;	/* from CACTI */
 				current_gmNmos=8.22E+02;
 				current_gmPmos=1.45E+02;			
-				currentOnNmos[0]  = 551;
+				currentOnNmos[0]  = 799.89;
 				currentOnNmos[10] = 786; 
 				currentOnNmos[20] = 750; 
 				currentOnNmos[30] = 716; 

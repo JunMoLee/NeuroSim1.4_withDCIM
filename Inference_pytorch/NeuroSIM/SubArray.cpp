@@ -89,23 +89,32 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 	
 	double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;  //set real layout cell height
 	double MIN_CELL_WIDTH = (MIN_GAP_BET_GATE_POLY + POLY_WIDTH) * 2;  //set real layout cell width
+	double ISOLATION_REGION = MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY;
 
-	if (tech.featureSize == 14 * 1e-9)
+	if (tech.featureSize == 14 * 1e-9){
 	MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 10 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_14nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 10 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 7 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_10nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 7 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_7nm /MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 5 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_7nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 5 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_5nm /MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 3 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_5nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 3 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_3nm /MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 2 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_3nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 2 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_2nm /MAX_TRANSISTOR_HEIGHT);
-    else if (tech.featureSize == 1 * 1e-9)
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_2nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else if (tech.featureSize == 1 * 1e-9){
     MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_1nm /MAX_TRANSISTOR_HEIGHT);
-    else
+	ISOLATION_REGION *= (OUTER_HEIGHT_REGION_1nm/(MIN_POLY_EXT_DIFF*2 + MIN_GAP_BET_FIELD_POLY));}
+    else{
     MIN_CELL_HEIGHT *= 1;
+	ISOLATION_REGION *=1;}
 
 	if (tech.featureSize == 14 * 1e-9)
 	MIN_CELL_WIDTH  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
@@ -123,18 +132,46 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
     MIN_CELL_WIDTH  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     else
     MIN_CELL_WIDTH  *= 1;
-    
+
+	// calculate subarray cell size requirement beforehand
+	cell.resCellAccess = cell.resistanceOn * IR_DROP_TOLERANCE;    //calculate access CMOS resistance
+	cell.widthAccessCMOS = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech) * LINEAR_REGION_RATIO / cell.resCellAccess;   //get access CMOS width
+	double widthAccessInFeatureSize = cell.widthAccessCMOS;
+	if (tech.featureSize <= 14 * 1e-9 && tech.featureSize >= 3 * 1e-9){			
+		widthAccessInFeatureSize  = ((cell.widthAccessCMOS-1) * tech.PitchFin + tech.widthFin) / tech.featureSize;  //convert #fin to F
+	}
+	else if (tech.featureSize <= 2 * 1e-9){
+		widthAccessInFeatureSize  = ((ceil(cell.widthAccessCMOS/(tech.max_sheet_num/2))-1) * tech.PitchFin + tech.widthFin) / tech.featureSize;
+	}
+	param->minimumCellWidth = widthAccessInFeatureSize + ISOLATION_REGION;
+	param->minimumCellHeight =  MIN_CELL_WIDTH/2;
 
 	if (cell.memCellType == Type::SRAM) {  //if array is SRAM
 		if (relaxArrayCellWidth) {  //if want to relax the cell width
-			lengthRow = (double)numCol * MAX(cell.widthInFeatureSize, MIN_CELL_WIDTH) * tech.featureSize;
+
+		param->minimumCellWidth=MAX(cell.widthInFeatureSize, MIN_CELL_WIDTH);
+		param->finalCellWidth=MAX(cell.widthInFeatureSize, MIN_CELL_WIDTH);
+
+			lengthRow = (double)numCol * param->finalCellWidth * tech.featureSize;
 		} else { //if not relax the cell width
-			lengthRow = (double)numCol * cell.widthInFeatureSize * tech.featureSize;
+
+		param->minimumCellWidth=cell.widthInFeatureSize;
+		param->finalCellWidth=cell.widthInFeatureSize;
+
+			lengthRow = (double)numCol * param->finalCellWidth* tech.featureSize;
 		}
 		if (relaxArrayCellHeight) {  //if want to relax the cell height
-			lengthCol = (double)numRow * MAX(cell.heightInFeatureSize, MIN_CELL_HEIGHT) * tech.featureSize;
+
+		param->minimumCellHeight=MAX(cell.heightInFeatureSize, MIN_CELL_HEIGHT);
+		param->finalCellHeight=MAX(cell.heightInFeatureSize, MIN_CELL_HEIGHT);
+
+			lengthCol = (double)numRow * param->finalCellHeight * tech.featureSize;
 		} else {  //if not relax the cell height
-			lengthCol = (double)numRow * cell.heightInFeatureSize * tech.featureSize;
+
+		param->minimumCellHeight=cell.heightInFeatureSize;
+		param->finalCellHeight=cell.heightInFeatureSize;
+
+			lengthCol = (double)numRow * param->finalCellHeight * tech.featureSize;
 		}
 	
 	} else if (cell.memCellType == Type::RRAM ||  cell.memCellType == Type::FeFET) {  //if array is RRAM
@@ -142,24 +179,40 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 		double cellWidth = cell.widthInFeatureSize;  
 		if (cell.accessType == CMOS_access) {  // 1T1R
 			if (relaxArrayCellWidth) {
-				lengthRow = (double)numCol * MAX(cellWidth, MIN_CELL_WIDTH*2) * tech.featureSize;	// Width*2 because generally switch matrix has 2 pass gates per column, even the SL/BL driver has 2 pass gates per column in traditional 1T1R memory
+				double modified_minimumCellWidth=MAX(param->minimumCellWidth,cellWidth);
+				param->finalCellWidth=MAX(modified_minimumCellWidth, MIN_CELL_WIDTH*2);
+				lengthRow = (double)numCol * param->finalCellWidth * tech.featureSize;	// Width*2 because generally switch matrix has 2 pass gates per column, even the SL/BL driver has 2 pass gates per column in traditional 1T1R memory
 			} else {
-				lengthRow = (double)numCol * cellWidth * tech.featureSize;
+				double modified_minimumCellWidth=MAX(param->minimumCellWidth,cellWidth);
+				param->finalCellWidth=modified_minimumCellWidth;
+				lengthRow = (double)numCol * param->finalCellWidth  * tech.featureSize;
 			}
 			if (relaxArrayCellHeight) {
-				lengthCol = (double)numRow * MAX(cellHeight, MIN_CELL_HEIGHT) * tech.featureSize;
+				double modified_minimumCellHeight=MAX(param->minimumCellHeight,cellHeight);
+				param->finalCellHeight=MAX(modified_minimumCellHeight, MIN_CELL_HEIGHT);
+				lengthCol = (double)numRow * param->finalCellHeight * tech.featureSize;
 			} else {
-				lengthCol = (double)numRow * cellHeight * tech.featureSize;
+				double modified_minimumCellHeight=MAX(param->minimumCellHeight,cellHeight);
+				param->finalCellHeight=modified_minimumCellHeight;
+				lengthCol = (double)numRow * param->finalCellHeight * tech.featureSize;
 			}
 		} else {	// Cross-point, if enter anything else except 'CMOS_access'
 			if (relaxArrayCellWidth) {
+
+
 				lengthRow = (double)numCol * MAX(cellWidth*cell.featureSize, MIN_CELL_WIDTH*2*tech.featureSize);	// Width*2 because generally switch matrix has 2 pass gates per column, even the SL/BL driver has 2 pass gates per column in traditional 1T1R memory
 			} else {
+
+
 				lengthRow = (double)numCol * cellWidth * cell.featureSize;
 			}
 			if (relaxArrayCellHeight) {
+
+
 				lengthCol = (double)numRow * MAX(cellHeight*cell.featureSize, MIN_CELL_HEIGHT*tech.featureSize);
 			} else {  
+
+
 				lengthCol = (double)numRow * cellHeight * cell.featureSize;
 			}
 		}
@@ -236,15 +289,9 @@ void SubArray::Initialize(int _numRow, int _numCol, double _unitWireRes){  //ini
 		sramWriteDriver.Initialize(numCol, activityColWrite, numWriteCellPerOperationNeuro);
     } else if (cell.memCellType == Type::RRAM || cell.memCellType == Type::FeFET) {
 		if (cell.accessType == CMOS_access) {	// 1T1R
-			cell.resCellAccess = cell.resistanceOn * IR_DROP_TOLERANCE;    //calculate access CMOS resistance
-			cell.widthAccessCMOS = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech) * LINEAR_REGION_RATIO / cell.resCellAccess;   //get access CMOS width
-			double widthAccessInFeatureSize = cell.widthAccessCMOS;
-			if (tech.featureSize <= 14 * 1e-9){			
-				widthAccessInFeatureSize = ((cell.widthAccessCMOS-1) * tech.PitchFin + tech.widthFin) / tech.featureSize;  //convert #fin to F
-			}
-			if (widthAccessInFeatureSize > cell.widthInFeatureSize) {	// Place transistor vertically
-				printf("Transistor width of 1T1R=%.2fF is larger than the assigned cell width=%.2fF in layout\n", cell.widthAccessCMOS, cell.widthInFeatureSize);
-				exit(-1);
+			if (param->finalCellWidth > cell.widthInFeatureSize) {	// Place transistor vertically
+				printf("Transistor width of 1T1R=%.2fF is larger than the assigned cell width=%.2fF in layout\n", param->finalCellWidth, cell.widthInFeatureSize);
+				// exit(-1);
 			}
 			cell.resMemCellOn = cell.resCellAccess + cell.resistanceOn;        //calculate single memory cell resistance_ON
 			cell.resMemCellOff = cell.resCellAccess + cell.resistanceOff;      //calculate single memory cell resistance_OFF
@@ -644,10 +691,10 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 					senseAmp.CalculateLatency(1);
 
 					// Read
-					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
+					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
 					double tau = (resCellAccess + resPullDown) * (capCellAccess + capCol) + resCol * capCol / 2;
 					tau *= log(tech.vdd / (tech.vdd - cell.minSenseVoltage / 2));   
-					double gm = CalculateTransconductance(cell.widthAccessCMOS * tech.featureSize, NMOS, tech);
+					double gm = CalculateTransconductance(cell.widthAccessCMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, tech);
 					double beta = 1 / (resPullDown * gm);
 					double colRamp = 0;
 					colDelay = horowitz(tau, beta, wlDecoder.rampOutput, &colRamp);
@@ -708,10 +755,10 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 					}					
 
 					// Read
-					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
+					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1)* tech.featureSize, NMOS, inputParameter.temperature, tech);
 					double tau = (resCellAccess + resPullDown) * (capCellAccess + capCol) + resCol * capCol / 2;
 					tau *= log(tech.vdd / (tech.vdd - cell.minSenseVoltage / 2));   
-					double gm = CalculateTransconductance(cell.widthAccessCMOS * tech.featureSize, NMOS, tech);
+					double gm = CalculateTransconductance(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1)* tech.featureSize, NMOS, tech);
 					double beta = 1 / (resPullDown * gm);
 					double colRamp = 0;
 					colDelay = horowitz(tau, beta, wlSwitchMatrix.rampOutput, &colRamp);
@@ -751,10 +798,10 @@ void SubArray::CalculateLatency(double columnRes, const vector<double> &columnRe
 					senseAmp.CalculateLatency(1);				
 					
 					// Read
-					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
+					double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
 					double tau = (resCellAccess + resPullDown) * (capCellAccess + capCol) + resCol * capCol / 2;
 					tau *= log(tech.vdd / (tech.vdd - cell.minSenseVoltage / 2));   
-					double gm = CalculateTransconductance(cell.widthAccessCMOS * tech.featureSize, NMOS, tech);
+					double gm = CalculateTransconductance(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1)* tech.featureSize, NMOS, tech);
 					double beta = 1 / (resPullDown * gm);
 					double colRamp = 0;
 					colDelay = horowitz(tau, beta, wlDecoder.rampOutput, &colRamp);
@@ -1047,8 +1094,8 @@ void SubArray::CalculatePower(const vector<double> &columnResistance) {
 			
 			// Array leakage (assume 2 INV)
 			leakage = 0;
-			leakage += CalculateGateLeakage(INV, 1, cell.widthSRAMCellNMOS * tech.featureSize,
-					cell.widthSRAMCellPMOS * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 2;
+			leakage += CalculateGateLeakage(INV, 1, cell.widthSRAMCellNMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize,
+					cell.widthSRAMCellPMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 2;
 			leakage *= numRow * numCol;
 
 			if (conventionalSequential) {

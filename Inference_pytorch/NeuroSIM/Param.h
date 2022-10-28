@@ -51,6 +51,10 @@ public:
 	
 	int relaxArrayCellHeight, relaxArrayCellWidth;
 	
+	// additional parameters to track subarray cell height & width design
+	double finalCellHeight=0, finalCellWidth=0;
+	double minimumCellHeight=0, minimumCellWidth=0;
+
 	bool globalBufferType, tileBufferType, peBufferType, chipActivation, reLu, novelMapping, pipeline, SARADC, currentMode, validated, synchronous;
 	int globalBufferCoreSizeRow, globalBufferCoreSizeCol, tileBufferCoreSizeRow, tileBufferCoreSizeCol;																								
 	
