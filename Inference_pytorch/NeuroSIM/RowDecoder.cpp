@@ -120,9 +120,17 @@ void RowDecoder::Initialize(DecoderMode _mode, int _numAddrRow, bool _MUX, bool 
 	    else
 		    numMetalConnection = 0;
 	
-	    // Output driver INV
-	    widthDriverInvN = 2 * MIN_NMOS_SIZE * tech.featureSize;
-	    widthDriverInvP = 2 * tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
+		if (MUX){
+	    widthDriverInvN = 2 * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_MUX;
+	    widthDriverInvP = 2 * tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_MUX;
+		widthDriverInvN_final = 2 * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_MUX_Last;
+		widthDriverInvP_final = 2 * tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_MUX_Last;
+		}
+		
+		else {
+	    widthDriverInvN = 2 * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_WLdecoder;
+	    widthDriverInvP = 2 * tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * param->sizingfactor_WLdecoder;			
+		}
 		// EnlargeSize(&widthDriverInvN, &widthDriverInvP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
     }
 
@@ -134,6 +142,9 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 		cout << "[Row Decoder Area] Error: Require initialization first!" << endl;
 	} else {
 		double hInv, wInv, hNand, wNand, hNor, wNor, hDriverInv, wDriverInv;
+
+		// 1.4 update
+		double hDriverInv_final, wDriverInv_final;
 		area = 0;
 		height = 0;
 		width = 0;
@@ -143,26 +154,26 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 		double Metal3_pitch = M3_PITCH;
 
 		if (tech.featureSize == 14 * 1e-9){
-		Metal2_pitch  *= (M2_PITCH_14nm/M2_PITCH);
-		Metal3_pitch *=  (M3_PITCH_14nm/M3_PITCH);}
+		Metal2_pitch  *= ( (double)M2_PITCH_14nm/M2_PITCH);
+		Metal3_pitch *=  ( (double)M3_PITCH_14nm/M3_PITCH);}
 		else if (tech.featureSize == 10 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_10nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_10nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_10nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_10nm/M3_PITCH);}
 		else if (tech.featureSize == 7 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_7nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_7nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_7nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_7nm/M3_PITCH);}
 		else if (tech.featureSize == 5 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_5nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_5nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_5nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_5nm/M3_PITCH);}
 		else if (tech.featureSize == 3 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_3nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_3nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_3nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_3nm/M3_PITCH);}
 		else if (tech.featureSize == 2 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_2nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_2nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_2nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_2nm/M3_PITCH);}
 		else if (tech.featureSize == 1 * 1e-9){
-		Metal2_pitch *= (M2_PITCH_1nm /M2_PITCH);
-		Metal3_pitch *= (M3_PITCH_1nm/M3_PITCH);}
+		Metal2_pitch *= ( (double)M2_PITCH_1nm /M2_PITCH);
+		Metal3_pitch *= ( (double)M3_PITCH_1nm/M3_PITCH);}
 		else{
 		Metal2_pitch *= 1;
 		Metal3_pitch *=1;}
@@ -176,6 +187,9 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 		// Output Driver INV
 		CalculateGateArea(INV, 1, widthDriverInvN, widthDriverInvP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech, &hDriverInv, &wDriverInv);
 
+		// 1.4 update
+		CalculateGateArea(INV, 1, widthDriverInvN_final, widthDriverInvP_final, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech, &hDriverInv_final, &wDriverInv_final);		
+		
 		if (mode == REGULAR_ROW) {	// Connect to rows
 			if (_newHeight && _option==NONE) {
 				if ((hNor > _newHeight) || (hNand > _newHeight) || (hInv > _newHeight)) {
@@ -212,7 +226,7 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 				height = _newHeight;
 				width = wInv * numColInv + wNand * numColNand + Metal3_pitch * numMetalConnection * tech.featureSize + wNor * numColNor;
 				if (MUX) {    // Mux enable circuit (NAND + INV) + INV
-					width += (wNand + wInv * 2) * numColNor;
+					width += (wNand + wDriverInv +  wDriverInv_final) * numColNor; // 1.4 update fixed
 				} else {    // REGULAR: 2 INV as output driver
 					width += (wDriverInv * 2) * numColNor;
 				}
@@ -220,7 +234,7 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 				height = MAX(hNor*numNor, hNand*numNand);
 				width = wInv + wNand + Metal3_pitch * numMetalConnection * tech.featureSize + wNor;
 				if (MUX) {	// Mux enable circuit (NAND + INV) + INV
-					width += wNand + wInv * 2;
+					width += wNand + wDriverInv +  wDriverInv_final; // 1.4 update fixed
 				} else {	// REGULAR: 2 INV as output driver
 					width += wDriverInv * 2;
 				}
@@ -261,7 +275,7 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 				width = _newWidth;
 				height = hInv * numRowInv + hNand * numRowNand + Metal2_pitch * numMetalConnection * tech.featureSize + hNor * numRowNor;
 				if (MUX) {    // Mux enable circuit (NAND + INV) + INV
-					height += (hNand + hInv * 2) * numRowNor;
+					height += (hNand + hDriverInv + hDriverInv_final) * numRowNor; // 1.4 update fixed
 				} else {    // REGULAR: 2 INV as output driver
 					height += (hDriverInv * 2) * numRowNor;
 				}
@@ -269,7 +283,7 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 				height = hInv + hNand + Metal2_pitch * numMetalConnection * tech.featureSize + hNor;
 				width = MAX(wNor*numNor, wNand*numNand);
 				if (MUX) {    // Mux enable circuit (NAND + INV) + INV
-					height += hNand + hInv * 2;
+					height += hNand + hDriverInv + hDriverInv_final; // 1.4 update fixed
 				} else {    // REGULAR: 2 INV as output driver
 					height += hDriverInv * 2;
 				}
@@ -308,10 +322,13 @@ void RowDecoder::CalculateArea(double _newHeight, double _newWidth, AreaModify _
 		}
 		// Output Driver INV
 		CalculateGateCapacitance(INV, 1, widthDriverInvN, widthDriverInvP, hDriverInv, tech, &capDriverInvInput, &capDriverInvOutput);
+		
+		// 1.4 update
+		CalculateGateCapacitance(INV, 1, widthDriverInvN_final, widthDriverInvP_final, hDriverInv, tech, &capDriverInvInput_final, &capDriverInvOutput_final);
 	}
 }
 
-void RowDecoder::CalculateLatency(double _rampInput, double _capLoad1, double _capLoad2, double numRead, double numWrite) {
+void RowDecoder::CalculateLatency(double _rampInput, double _capLoad1, double _capLoad2, double resLoad, double colnum, double numRead, double numWrite) {
 	if (!initialized) {
 		cout << "[Row Decoder Latency] Error: Require initialization first!" << endl;
 	} else {
@@ -373,6 +390,9 @@ void RowDecoder::CalculateLatency(double _rampInput, double _capLoad1, double _c
 
 		// Output driver or Mux enable circuit
 		if (MUX) {	// Mux enable circuit (NAND + INV) + INV
+
+			// 1.4 update : new latency to allow driver sizing
+
 			// 1st NAND
 			resPullDown = CalculateOnResistance(widthNandN, NMOS, inputParameter.temperature, tech);
 			tr = resPullDown * (capNandOutput + capInvInput);
@@ -380,18 +400,20 @@ void RowDecoder::CalculateLatency(double _rampInput, double _capLoad1, double _c
 			beta = 1 / (resPullDown * gm);
 			readLatency += horowitz(tr, beta, rampNorOutput, &rampNandOutput);
 			writeLatency += horowitz(tr, beta, rampNorOutput, &rampNandOutput);
+			
+			// &capInvInput_final, &capInvOutput_final
 
 			// 2nd INV
 			resPullUp = CalculateOnResistance(widthDriverInvP, PMOS, inputParameter.temperature, tech);
-			tr = resPullUp * (capDriverInvOutput + capDriverInvInput + capLoad1);
+			tr = resPullUp * (capDriverInvOutput + capDriverInvInput_final + capLoad1);
 			gm = CalculateTransconductance(widthDriverInvP, PMOS, tech);
 			beta = 1 / (resPullUp * gm);
 			readLatency += horowitz(tr, beta, rampNandOutput, &rampInvOutput);
 			writeLatency += horowitz(tr, beta, rampNandOutput, &rampInvOutput);
 
 			// 3rd INV
-			resPullDown = CalculateOnResistance(widthDriverInvN, NMOS, inputParameter.temperature, tech);
-			tr = resPullDown * (capDriverInvOutput + capLoad2);
+			resPullDown = CalculateOnResistance(widthDriverInvN_final, NMOS, inputParameter.temperature, tech);
+			tr = resPullDown * (capDriverInvOutput_final + capLoad2);
 			gm = CalculateTransconductance(widthDriverInvN, NMOS, tech);
 			beta = 1 / (resPullDown * gm);
 			readLatency += horowitz(tr, beta, rampInvOutput, &rampOutput);
@@ -406,9 +428,12 @@ void RowDecoder::CalculateLatency(double _rampInput, double _capLoad1, double _c
 			beta = 1 / (resPullDown * gm);
 			readLatency += horowitz(tr, beta, rampNorOutput, &rampInvOutput);
 			writeLatency += horowitz(tr, beta, rampNorOutput, &rampInvOutput);
+			
 			// 2nd INV
 			resPullUp = CalculateOnResistance(widthDriverInvP, PMOS, inputParameter.temperature, tech);
-			tr = resPullUp * (capDriverInvOutput + capLoad1);
+
+			// 1.4 update : resisitve load at the output is considered
+			tr = resPullUp * (capDriverInvOutput + capLoad1) + (resLoad * (capLoad1 + capLoad1/colnum))/2;
 			gm = CalculateTransconductance(widthDriverInvP, PMOS, tech);
 			beta = 1 / (resPullUp * gm);
 			readLatency += horowitz(tr, beta, rampInvOutput, &rampOutput);

@@ -71,10 +71,41 @@ void Buffer::Initialize(int _numBit, int _interface_width, int _num_interface, d
 	if (SRAM) {
 		lengthRow = (double)interface_width * param->widthInFeatureSizeSRAM * tech.featureSize;
 		lengthCol = (double)ceil((double)numBit/(double)interface_width) * param->heightInFeatureSizeSRAM * tech.featureSize;
+
+		// 1.4 update add variables
+		numCol= interface_width;
+		numRow= (double)ceil((double)numBit/(double)interface_width);
 		
+		capRow1 = lengthRow * 0.2e-15/1e-6;	// BL for 1T1R, WL for Cross-point and SRAM
+		capCol = lengthCol * 0.2e-15/1e-6;
+
+		// 1.4 update
+		resCellAccess = CalculateOnResistance(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
+		capCellAccess = CalculateDrainCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech);
+		capSRAMCell = capCellAccess + CalculateDrainCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) 
+						+ CalculateDrainCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, PMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) 
+						+ CalculateGateCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech) + CalculateGateCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech);
+		capRow1 += 2*CalculateGateCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech) * numCol;          //sum up all the gate cap of access CMOS, as the row cap
+		
+		if (tech.featureSize <= 14 * 1e-9) capCol += tech.cap_draintotal * cell.widthAccessCMOS * tech.effective_width * numRow;
+		else capCol += CalculateDrainCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) * numRow;	
+		
+		resRow = lengthRow * param->Metal0_unitwireresis;
+		resCol = lengthCol * param->Metal1_unitwireresis;
+
+		// 1.4 update: consider overlap capacitance for FinFET
+		if (tech.featureSize <= 14 * 1e-9) capCol += tech.cap_draintotal * cell.widthAccessCMOS * tech.effective_width * numRow;	
+				
 		precharger.Initialize(interface_width, lengthCol * unitWireRes, 1, interface_width, interface_width);
 		sramWriteDriver.Initialize(interface_width, 1, interface_width);
+
+		// 1.4 update: add senseamp
+		senseAmp.Initialize(interface_width, false, cell.minSenseVoltage, lengthRow/interface_width, clkFreq, interface_width);
+
 	} else {
+		// 1.4 update
+		numCol= interface_width;
+		
 		dff.Initialize(numBit, clkFreq);
 	}
 	
@@ -96,10 +127,16 @@ void Buffer::CalculateArea(double _newHeight, double _newWidth, AreaModify _opti
 			wlDecoder.CalculateArea(lengthCol, NULL, NONE);
 			precharger.CalculateArea(NULL, lengthRow, NONE);
 			sramWriteDriver.CalculateArea(NULL, lengthRow, NONE);
-			area += memoryArea + wlDecoder.area + precharger.area + sramWriteDriver.area;
+
+			// 1.4 update - senseamp included
+			area += memoryArea + wlDecoder.area + precharger.area + sramWriteDriver.area + senseAmp.area;
 		} else {
+			
 			dff.CalculateArea(NULL, NULL, NONE);
 			wlDecoder.CalculateArea(dff.hDff*ceil((double)numBit/(double)interface_width), NULL, NONE);
+			lengthRow = wlDecoder.width;
+			resRow = lengthRow * param->Metal0_unitwireresis;
+
 			area += dff.area + wlDecoder.area;
 		}
 
@@ -140,35 +177,39 @@ void Buffer::CalculateLatency(double numAccessBitRead, double numRead, double nu
 		writeWholeLatency = 0;
 		
 		if (param->synchronous) {
-			readLatency = numRead;		// read 1 line per cycle
-			writeLatency = numWrite;
+			readLatency = numRead/2;		// read 1 line per cycle
+			writeLatency = numWrite/2;
 		} else {
 			if (SRAM) {
-				wlDecoder.CalculateLatency(1e20, lengthRow * 0.2e-15/1e-6, NULL, (double) numBit/interface_width, (double) numBit/interface_width);
-				precharger.CalculateLatency(1e20, lengthCol * 0.2e-15/1e-6, (double) numBit/interface_width, (double) numBit/interface_width);
-				sramWriteDriver.CalculateLatency(1e20, lengthCol * 0.2e-15/1e-6, lengthCol * unitWireRes, (double) numBit/interface_width);
+				wlDecoder.CalculateLatency(1e20, lengthRow * 0.2e-15/1e-6, NULL, resRow, interface_width, numRow, numRow);
+				precharger.CalculateLatency(1e20, lengthCol * 0.2e-15/1e-6, numRow, numRow);
+				sramWriteDriver.CalculateLatency(1e20, lengthCol * 0.2e-15/1e-6, lengthCol * unitWireRes, numRow);
+				senseAmp.CalculateLatency(numRow);	
+
+				// 1.4 update
+				double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
+				double BLCap_perCell = capCol / numRow;
+				double BLRes_perCell = resCol / numRow;
+				double Elmore_BL = (resCellAccess + resPullDown) * BLCap_perCell * numRow   + BLCap_perCell * BLRes_perCell * numRow  * ( numRow +1 )  /2;
 				
-				// modified by junmo: FinFET, GAA compatibility - 220922
-				
-				double resCellAccess = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*param->widthAccessCMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
-				double capCellAccess = CalculateDrainCap(((tech.featureSize <= 14*1e-9)? 2:1)*param->widthAccessCMOS * tech.featureSize, NMOS, param->widthInFeatureSizeSRAM * tech.featureSize, tech);
-				double resPullDown = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*param->widthSRAMCellNMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
-				double tau = (resCellAccess + resPullDown) * (capCellAccess + lengthCol * 0.2e-15/1e-6) + lengthCol * unitWireRes * (lengthCol * 0.2e-15/1e-6) / 2;
-				tau *= log(tech.vdd / (tech.vdd - param->minSenseVoltage / 2));   
-				double gm = CalculateTransconductance(((tech.featureSize <= 14*1e-9)? 2:1)*param->widthAccessCMOS * tech.featureSize, NMOS, tech);
-				double beta = 1 / (resPullDown * gm);
-				double colRamp = 0;
-				colDelay = horowitz(tau, beta, wlDecoder.rampOutput, &colRamp)*((double) numBit/interface_width);
-				readWholeLatency += wlDecoder.readLatency + precharger.readLatency + colDelay;
-				writeWholeLatency += wlDecoder.writeLatency + precharger.writeLatency + sramWriteDriver.writeLatency;
+				// 1.4 update to integer 
+				colDelay = Elmore_BL * log(tech.vdd / (tech.vdd - cell.minSenseVoltage / 2)) * numRow;
+
+				// 1.4 update: sense amp delay should be included
+				readWholeLatency += wlDecoder.readLatency + precharger.readLatency + colDelay +senseAmp.readLatency;
+
+				// 1.4 update: write delay -> precharger delay + (max (wldecoder + WL delay, sramWriteDriver.writeLatency + BL delay), neglect SRAM writing time)
+				writeWholeLatency += precharger.writeLatency + max (wlDecoder.writeLatency, sramWriteDriver.writeLatency);
 			} else {
-				wlDecoder.CalculateLatency(1e20, dff.hDff * interface_width * 0.2e-15/1e-6, NULL, (double) numBit/interface_width, (double) numBit/interface_width);
+				// 1.4 update to integer
+				wlDecoder.CalculateLatency(1e20, dff.hDff * interface_width * 0.2e-15/1e-6, resRow, numCol, NULL, numRow, numRow);
 				readWholeLatency += wlDecoder.readLatency;
-				readWholeLatency += ((double) 1/clkFreq/2)*((double) numBit/interface_width);  // assume dff need half clock cycle to access
-				writeWholeLatency += wlDecoder.writeLatency + ((double) 1/clkFreq/2)*((double) numBit/interface_width);
-			}			
-			avgBitReadLatency = (double) readWholeLatency/(numBit/interface_width);     // average latency per line(sec/line)
-			avgBitWriteLatency = (double) writeWholeLatency/(numBit/interface_width);
+				readWholeLatency += ((double) 1/clkFreq/2)*numRow;  // assume dff need half clock cycle to access
+				writeWholeLatency += wlDecoder.writeLatency + ((double) 1/clkFreq/2)*numRow;
+			}
+			// 1.4 update to integer			
+			avgBitReadLatency = (double) readWholeLatency/numRow;     // average latency per line(sec/line)
+			avgBitWriteLatency = (double) writeWholeLatency/numRow;
 			readLatency = avgBitReadLatency*numRead;
 			writeLatency = avgBitWriteLatency*numWrite;
 		}
@@ -186,19 +227,31 @@ void Buffer::CalculatePower(double numAccessBitRead, double numRead, double numA
 		writeWholeDynamicEnergy = 0;
 		
 		if (SRAM) {
-			wlDecoder.CalculatePower(numBit/interface_width, numBit/interface_width);
-			precharger.CalculatePower(numBit/interface_width, numBit/interface_width);
-			sramWriteDriver.CalculatePower(numBit/interface_width);
-			readWholeDynamicEnergy += wlDecoder.readDynamicEnergy + precharger.readDynamicEnergy + sramWriteDriver.readDynamicEnergy;
+			wlDecoder.CalculatePower(numRow, numRow);
+			precharger.CalculatePower(numRow, numRow);
+			sramWriteDriver.CalculatePower(numRow);
+			senseAmp.CalculatePower(numRow);
+
+			// 1.4 update
+			// senseAmp.CalculatePower(numReadOperationPerRow*numRow*activityRowRead), WL, BL energy, no sramWriteDriver.readDynamicEnergy;
+			readWholeDynamicEnergy += wlDecoder.readDynamicEnergy + precharger.readDynamicEnergy + senseAmp.readDynamicEnergy;
 			writeWholeDynamicEnergy += wlDecoder.writeDynamicEnergy + precharger.writeDynamicEnergy + sramWriteDriver.writeDynamicEnergy;
 			leakage += wlDecoder.leakage + precharger.leakage + sramWriteDriver.leakage + senseAmp.leakage;
+			
+			// 1.4 update: read/write energy update
+			readWholeDynamicEnergy += capRow1 * tech.vdd * tech.vdd * numRow; // added for WL/BL discharging
+			writeWholeDynamicEnergy  += cell.capSRAMCell * tech.vdd * tech.vdd * numBit;    // flip Q and Q_bar
+			writeWholeDynamicEnergy  += capRow1 * tech.vdd * tech.vdd * numRow;	
+
 		} else {
-			wlDecoder.CalculatePower(numBit/interface_width, numBit/interface_width);
+			wlDecoder.CalculatePower(numRow, numRow);
 			dff.CalculatePower(1, numBit, false);
 			
 			readWholeDynamicEnergy += wlDecoder.readDynamicEnergy + dff.readDynamicEnergy;
 			writeWholeDynamicEnergy += wlDecoder.writeDynamicEnergy + dff.writeDynamicEnergy;
 			
+			readWholeDynamicEnergy = readWholeDynamicEnergy/2;
+			writeWholeDynamicEnergy = writeWholeDynamicEnergy/2;
 			leakage += dff.leakage;
 			leakage += wlDecoder.leakage;
 		}

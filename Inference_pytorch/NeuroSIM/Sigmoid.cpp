@@ -47,7 +47,7 @@ using namespace std;
 
 extern Param *param;
 
-Sigmoid::Sigmoid(const InputParameter& _inputParameter, const Technology& _tech, const MemCell& _cell): inputParameter(_inputParameter), tech(_tech), cell(_cell), mux(_inputParameter, _tech, _cell), muxDecoder(_inputParameter, _tech, _cell), wlDecoder(_inputParameter, _tech, _cell), colDecoder(_inputParameter, _tech, _cell), senseAmp(_inputParameter, _tech, _cell), colDecoderDriver(_inputParameter, _tech, _cell), voltageSenseAmp(_inputParameter, _tech, _cell), FunctionUnit() {
+Sigmoid::Sigmoid(const InputParameter& _inputParameter, const Technology& _tech, const MemCell& _cell): inputParameter(_inputParameter), tech(_tech), cell(_cell), mux(_inputParameter, _tech, _cell), muxDecoder(_inputParameter, _tech, _cell), wlDecoder(_inputParameter, _tech, _cell), colDecoder(_inputParameter, _tech, _cell), senseAmp(_inputParameter, _tech, _cell), colDecoderDriver(_inputParameter, _tech, _cell), voltageSenseAmp(_inputParameter, _tech, _cell), precharger(_inputParameter, _tech, _cell), sramWriteDriver(_inputParameter, _tech, _cell), FunctionUnit() {
 	initialized = false;
 }
 
@@ -79,9 +79,41 @@ void Sigmoid::Initialize(bool _SRAM, int _numYbit, int _numEntry, int _numFuncti
 	}
 
 	if (SRAM) { // initialize peripheral ckt for sigmoid function
+
+		// 1.4 update
+		numCol = numYbit;
+		numRow = numEntry;
+
+		// 1.4 update: SRAM parameters
+		
+		resCellAccess = CalculateOnResistance(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
+		capCellAccess = CalculateDrainCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech);
+		capSRAMCell = capCellAccess + CalculateDrainCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) 
+						+ CalculateDrainCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, PMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) 
+						+ CalculateGateCap(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech) + CalculateGateCap(cell.widthSRAMCellPMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech);
+		capRow1 += 2*CalculateGateCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, tech) * numCol;          //sum up all the gate cap of access CMOS, as the row cap
+		
+		resRow = wUnit * param->Metal0_unitwireresis ;
+		resCol =  hUnit * numEntry * param->Metal1_unitwireresis;
+
+		if (tech.featureSize <= 14 * 1e-9) capCol += tech.cap_draintotal * cell.widthAccessCMOS * tech.effective_width * numRow;
+		else capCol += CalculateDrainCap(cell.widthAccessCMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, MAX_TRANSISTOR_HEIGHT * tech.featureSize, tech) * numRow;	
+		
+		// 1.4 update
+		// SRAM write driver
+		// Precharger 
+		precharger.Initialize(numYbit, hUnit * numEntry * param->Metal1_unitwireresis, 1, numYbit, numYbit);
+		sramWriteDriver.Initialize(numYbit, 1, numYbit);
+
 		wlDecoder.Initialize(REGULAR_ROW, (int)ceil((double)log2((double)numEntry)), false, false);      // wlDecoder to give x values to sigmoid function
 		senseAmp.Initialize(numYbit, false, cell.minSenseVoltage, wUnit/numYbit, clkFreq, 1);    // just assign one S/A
+
+
 	} else {
+		// 1.4 update
+		numCol = numYbit;
+		numRow = numEntry;
+		resRow = wUnit * param->Metal0_unitwireresis ;
 		wlDecoder.Initialize(REGULAR_ROW, (int)ceil((double)log2((double)numEntry)), false, false);      // wlDecoder to give x values to sigmoid function
 		voltageSenseAmp.Initialize(numYbit, clkFreq);
 	}
@@ -101,6 +133,10 @@ void Sigmoid::CalculateUnitArea(AreaModify _option) {      // firstly calculate 
 		
 		if (SRAM) { // initialize peripheral ckt for sigmoid function
 			senseAmp.CalculateArea(NULL, NULL, NONE);
+			// 1.4 update
+			// precharger.CalculateArea(NULL, NULL, NONE);
+			// sramWriteDriver.CalculateArea(NULL, NULL, NONE);
+
 		} else {
 			voltageSenseAmp.CalculateUnitArea();
 			voltageSenseAmp.CalculateArea(NULL);
@@ -108,7 +144,15 @@ void Sigmoid::CalculateUnitArea(AreaModify _option) {      // firstly calculate 
 		
 		areaUnit += (hUnit * wUnit) * numEntry ;    
 		areaUnit += wlDecoder.area + senseAmp.area + voltageSenseAmp.area;
-		
+
+		// 1.4 update
+
+		// SRAM write driver
+		// Precharger 
+		/* added part (start) */ 
+		// areaUnit += wlDecoder.area + senseAmp.area + voltageSenseAmp.area + precharger.area + sramWriteDriver.area;
+		/* added part (end) */ 
+
 		switch (_option) {
 			case MAGIC:
 				MagicLayout();
@@ -161,17 +205,30 @@ void Sigmoid::CalculateLatency(double numRead) {
 	} else {
 		readLatency = 0;
 
-		double resCellAccess = CalculateOnResistance(cell.widthAccessCMOS * tech.featureSize, NMOS, inputParameter.temperature, tech);
-		double capCellAccess = CalculateDrainCap(cell.widthAccessCMOS * tech.featureSize, NMOS, cell.widthInFeatureSize * tech.featureSize, tech);
-		capSRAMCell = capCellAccess + CalculateDrainCap(cell.widthSRAMCellNMOS * tech.featureSize, NMOS, cell.widthInFeatureSize * tech.featureSize, tech) + CalculateDrainCap(cell.widthSRAMCellPMOS * tech.featureSize, PMOS, cell.widthInFeatureSize * tech.featureSize, tech);
-		
 		if (SRAM) {
-			wlDecoder.CalculateLatency(1e20, 0, capSRAMCell, 1, 1);
+			wlDecoder.CalculateLatency(1e20, 0, capSRAMCell, resRow, numYbit, 1, 1);
 			senseAmp.CalculateLatency(1);
+
+			// 1.4 update
+
+			/* added part (start) */ 
+			
+			// 1.4 update : new bitline model
+			double resPullDown = CalculateOnResistance(cell.widthSRAMCellNMOS * ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, NMOS, inputParameter.temperature, tech);
+			double BLCap_perCell = capCol / numRow;
+			double BLRes_perCell = resCol / numRow;
+			double Elmore_BL = (resCellAccess + resPullDown) * BLCap_perCell * numRow   + BLCap_perCell * BLRes_perCell * numRow  * ( numRow +1 )  /2;
+			colDelay = Elmore_BL * log(tech.vdd / (tech.vdd - cell.minSenseVoltage / 2));  
+
+			// readLatency = wlDecoder.readLatency + senseAmp.readLatency + colDelay + precharger.readLatency;
+
+			/* added part (end)*/
+
 			readLatency = wlDecoder.readLatency + senseAmp.readLatency;
+
 		} else {	// RRAM
 			// Assuming no delay on RRAM wires
-			wlDecoder.CalculateLatency(1e20, 0, capCellAccess, 1, 1);
+			wlDecoder.CalculateLatency(1e20, 0, capCellAccess, resRow, numYbit, 1, 1);
 			voltageSenseAmp.CalculateLatency(0, 1);
 			readLatency = wlDecoder.readLatency + voltageSenseAmp.readLatency;
 		}
@@ -195,12 +252,22 @@ void Sigmoid::CalculatePower(double numRead) {
 			
 			readDynamicEnergy += wlDecoder.readDynamicEnergy + senseAmp.readDynamicEnergy;
 
+			// 1.4 update: precharger, WL energy, BL energy?
+			// precharger.CalculatePower(1);
+			// readDynamicEnergy += precharger.readDynamicEnergy;
+
 			// Array leakage (assume 2 INV)
 			leakage += CalculateGateLeakage(INV, 1, cell.widthSRAMCellNMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize,
 					cell.widthSRAMCellPMOS* ((tech.featureSize <= 14*1e-9)? 2:1) * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 2;
 			leakage *= numCell;
 			leakage += wlDecoder.leakage;
 			leakage += senseAmp.leakage;
+
+			// 1.4 update: precharger, WL energy, BL energy?
+			// sram.CalculatePower(1);
+			// leakage += precharger.leakage;
+			// leakage += sramWriteDriver.leakage;
+
 			
 		} else {	// RRAM
 			wlDecoder.CalculatePower(1,1);

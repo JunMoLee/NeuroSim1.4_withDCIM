@@ -52,6 +52,10 @@
 #include "VoltageSenseAmp.h"
 #include "SenseAmp.h"
 
+// 1.4 update
+#include "Precharger.h" 
+#include "SRAMWriteDriver.h" 
+
 class Sigmoid: public FunctionUnit {
 public:
 	Sigmoid(const InputParameter& _inputParameter, const Technology& _tech, const MemCell& _cell);
@@ -81,13 +85,26 @@ public:
 	double widthInvN, widthInvP;
 	double hUnit, wUnit, areaUnit;
 
+	// 1.4 update 
+	double capRow1, capCol, resRow, resCol;
+	double resCellAccess, capCellAccess;
+	double colDelay;
+	double numCol, numRow;
+
+	// 1.4 update
+	Precharger precharger;
+	SRAMWriteDriver sramWriteDriver;
+	
 	RowDecoder muxDecoder;
 	Mux mux;
 	RowDecoder wlDecoder;
 	SenseAmp senseAmp;
+
 	RowDecoder colDecoder;
 	DecoderDriver colDecoderDriver;
 	VoltageSenseAmp voltageSenseAmp;
+
+
 };
 
 #endif /* SIGMOID_H_ */

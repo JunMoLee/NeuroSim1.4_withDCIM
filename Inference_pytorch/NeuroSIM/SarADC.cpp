@@ -219,10 +219,23 @@ double SarADC::GetColumnPower(double columnRes) {
 			} else if (param->technode == 10){   
 				Column_Power = (0.1823*log2(levelOutput)+1.5073)*1e-6;
 				Column_Power += 0.051580*exp(-2.303*log10(columnRes));
-			} else {   // 7nm
+			} else if (param->technode == 7){   // 7nm
 				Column_Power = (0.1061*log2(levelOutput)+0.8847)*1e-6;
 				Column_Power += 0.043555*exp(-2.303*log10(columnRes));
+			} else if (param->technode == 5){   // 5nm
+				Column_Power = (0.0645*log2(levelOutput)+0.5511)*1e-6;
+				Column_Power += 0.0388*exp(-2.303*log10(columnRes));
+			} else if (param->technode == 3){   // 3nm
+				Column_Power = (0.0333*log2(levelOutput)+0.2849)*1e-6;
+				Column_Power += 0.0338*exp(-2.303*log10(columnRes));
+			} else if (param->technode == 2){   // 2nm
+				Column_Power = (0.0207*log2(levelOutput)+0.1764)*1e-6;
+				Column_Power += 0.0313*exp(-2.303*log10(columnRes));
+			} else {   // 1nm
+				Column_Power = (0.0101*log2(levelOutput)+0.0843)*1e-6;
+				Column_Power += 0.0288*exp(-2.303*log10(columnRes));
 			}
+
 		}
 	}
 	Column_Power *= (1+1.3e-3*(param->temp-300));

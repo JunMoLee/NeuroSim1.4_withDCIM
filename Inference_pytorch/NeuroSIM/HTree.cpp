@@ -66,25 +66,30 @@ void HTree::Initialize(int _numRow, int _numCol, double _delaytolerance, double 
 
 	numStage = 2*ceil(log2((double) max(numRow, numCol)))+1;   // vertical has N stage, horizontal has N+1 stage
 	unitLengthWireResistance = param->unitLengthWireResistance;
-	unitLengthWireCap = 0.2e-15/1e-6;;   // 0.2 fF/mm
-	
 
+	
+	unitLengthWireCap = 0.2e-15/1e-6;
+	
 	// define min INV resistance and capacitance to calculate repeater size
 	widthMinInvN = MIN_NMOS_SIZE * tech.featureSize;
 	widthMinInvP = tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
 	CalculateGateArea(INV, 1, widthMinInvN, widthMinInvP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hMinInv, &wMinInv);
 	CalculateGateCapacitance(INV, 1, widthMinInvN, widthMinInvP, hMinInv, tech, &capMinInvInput, &capMinInvOutput);
-	double resOnRep = CalculateOnResistance(widthMinInvN, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(widthMinInvP, PMOS, inputParameter.temperature, tech);
+
+	// 1.4 update: change the formula
+	double resOnRep = (CalculateOnResistance(widthMinInvN, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(widthMinInvP, PMOS, inputParameter.temperature, tech))/2;
 	// optimal repeater design to achieve highest speed
-	repeaterSize = floor((double)sqrt( (double) resOnRep*unitLengthWireCap/capMinInvInput/unitLengthWireResistance));
+	repeaterSize =   floor((double)sqrt( (double) resOnRep*unitLengthWireCap/capMinInvInput/unitLengthWireResistance));
 	minDist = sqrt(2*resOnRep*(capMinInvOutput+capMinInvInput)/(unitLengthWireResistance*unitLengthWireCap));
 	CalculateGateArea(INV, 1, MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hRep, &wRep);
 	CalculateGateCapacitance(INV, 1, MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, hRep, tech, &capRepInput, &capRepOutput);
-	resOnRep = CalculateOnResistance(MIN_NMOS_SIZE * tech.featureSize * repeaterSize, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, PMOS, inputParameter.temperature, tech);
-	double minUnitLengthDelay = 0.7*(resOnRep*(capRepInput+capRepOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capRepInput)/minDist;
+	
+	// 1.4 update: change the formula
+	resOnRep = (CalculateOnResistance(MIN_NMOS_SIZE * tech.featureSize * repeaterSize, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, PMOS, inputParameter.temperature, tech))/2;
+	double minUnitLengthDelay = 0.7*(resOnRep*(capRepInput+capRepOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capRepInput)/minDist;
 	double maxUnitLengthEnergy = (capRepInput+capRepOutput+unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist;
 	
-	if (delaytolerance) {   // tradeoff: increase delay to decrease energy
+	if (param->tolerance && delaytolerance) {   // tradeoff: increase delay to decrease energy
 		double delay = 0;
 		double energy = 100;
 		while(delay<minUnitLengthDelay*(1+delaytolerance)) {
@@ -92,15 +97,22 @@ void HTree::Initialize(int _numRow, int _numCol, double _delaytolerance, double 
 			minDist *= 0.9;
 			CalculateGateArea(INV, 1, MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hRep, &wRep);
 			CalculateGateCapacitance(INV, 1, MIN_NMOS_SIZE * tech.featureSize * repeaterSize, tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, hRep, tech, &capRepInput, &capRepOutput);
-			resOnRep = CalculateOnResistance(MIN_NMOS_SIZE * tech.featureSize * repeaterSize, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, PMOS, inputParameter.temperature, tech);
-			delay = 0.7*(resOnRep*(capRepInput+capRepOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capRepInput)/minDist;
+			// 1.4 update: change the formula
+			resOnRep = (CalculateOnResistance(MIN_NMOS_SIZE * tech.featureSize * repeaterSize, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize * repeaterSize, PMOS, inputParameter.temperature, tech))/2;
+			delay = 0.7*(resOnRep*(capRepInput+capRepOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capRepInput)/minDist;
 			energy = (capRepInput+capRepOutput+unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist;
 		}
 	}
+
+	if (param->repeater_enlarge) repeaterSize = param->repeater_add + repeaterSize;
+	
 	
 	widthInvN = MAX(1,repeaterSize) * MIN_NMOS_SIZE * tech.featureSize;
 	widthInvP = MAX(1,repeaterSize) * tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
 	
+	// cout<< "repeaterSize : "<<repeaterSize<< endl; //for debugging
+
+
 	/*** define center point ***/
 	x_center = floor(log2((double) min(numRow, numCol)));
 	y_center = floor(log2((double) min(numRow, numCol)));
@@ -181,7 +193,7 @@ void HTree::CalculateLatency(int x_init, int y_init, int x_end, int y_end, doubl
 		double wireLengthV = unitHeight*pow(2, (numStage-1)/2);   // first vertical stage
 		double wireLengthH = unitWidth*pow(2, (numStage-1)/2);    // first horizontal stage (despite of main bus)
 		double numRepeater = 0;
-		double resOnRep = CalculateOnResistance(widthInvN, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(widthInvP, PMOS, inputParameter.temperature, tech);
+		double resOnRep = ( CalculateOnResistance(widthInvN, NMOS, inputParameter.temperature, tech) + CalculateOnResistance(widthInvP, PMOS, inputParameter.temperature, tech) ) /2;
 		
 		if (((!x_init) && (!y_init)) || ((!x_end) && (!y_end))) {      // root-leaf communicate (fixed addr)
 			for (int i=0; i<(numStage-1)/2; i++) {                     // ignore main bus here, but need to count until last stage (diff from area calculation)
@@ -190,7 +202,7 @@ void HTree::CalculateLatency(int x_init, int y_init, int x_end, int y_end, doubl
 				/*** vertical stage ***/
 				wireLengthV /= 2;   // wire length /2 
 				wireWidth, unitLengthWireResistance = GetUnitLengthRes(wireLengthV);
-				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
+				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
 				unitLatencyWire = 0.7*unitLengthWireResistance*minDist*unitLengthWireCap*minDist/minDist;
 				numRepeater = ceil(wireLengthV/minDist);
 				if (numRepeater > 0) {
@@ -202,7 +214,7 @@ void HTree::CalculateLatency(int x_init, int y_init, int x_end, int y_end, doubl
 				/*** horizontal stage ***/
 				wireLengthH /= 2;   // wire length /2 
 				wireWidth, unitLengthWireResistance = GetUnitLengthRes(wireLengthH);
-				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
+				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
 				unitLatencyWire = 0.7*unitLengthWireResistance*minDist*unitLengthWireCap*minDist/minDist;
 				numRepeater = ceil(wireLengthH/minDist);
 				if (numRepeater > 0) {
@@ -266,7 +278,7 @@ void HTree::CalculateLatency(int x_init, int y_init, int x_end, int y_end, doubl
 				/*** vertical stage ***/
 				wireLengthV /= 2;   // wire length /2 
 				wireWidth, unitLengthWireResistance = GetUnitLengthRes(wireLengthV);
-				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
+				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
 				unitLatencyWire = 0.7*unitLengthWireResistance*minDist*unitLengthWireCap*minDist/minDist;
 				numRepeater = ceil(wireLengthV/minDist);
 				if (numRepeater > 0) {
@@ -277,7 +289,7 @@ void HTree::CalculateLatency(int x_init, int y_init, int x_end, int y_end, doubl
 				/*** horizontal stage ***/
 				wireLengthH /= 2;   // wire length /2 
 				wireWidth, unitLengthWireResistance = GetUnitLengthRes(wireLengthH);
-				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.5*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
+				unitLatencyRep = 0.7*(resOnRep*(capInvInput+capInvOutput+unitLengthWireCap*minDist)+0.54*unitLengthWireResistance*minDist*unitLengthWireCap*minDist+unitLengthWireResistance*minDist*capInvInput)/minDist;
 				unitLatencyWire = 0.7*unitLengthWireResistance*minDist*unitLengthWireCap*minDist/minDist;
 				numRepeater = ceil(wireLengthH/minDist);
 				if (numRepeater > 0) {
@@ -305,8 +317,11 @@ void HTree::CalculatePower(int x_init, int y_init, int x_end, int y_end, double 
 		
 		unitLengthLeakage = CalculateGateLeakage(INV, 1, widthInvN, widthInvP, inputParameter.temperature, tech) * tech.vdd / minDist;
 		leakage = unitLengthLeakage * totalWireLength;
-		unitLengthEnergyRep = (capInvInput+capInvOutput+unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist*0.25;
-		unitLengthEnergyWire = (unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist*0.25;
+		
+
+		unitLengthEnergyRep = (capInvInput+capInvOutput+unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist * 0.5;
+		unitLengthEnergyWire = (unitLengthWireCap*minDist)*tech.vdd*tech.vdd/minDist*0.5;
+
 		double wireLengthV = unitHeight*pow(2, (numStage-1)/2)/2;   // first vertical stage
 		double wireLengthH = unitWidth*pow(2, (numStage-1)/2)/2;    // first horizontal stage (despite of main bus)
 		
@@ -387,37 +402,85 @@ double HTree::GetUnitLengthRes(double wireLength) {
 
 	if (wireLength/tech.featureSize >= 100000) {
 		wireWidth = 4*param->wireWidth;
-	} else if (10000 <= wireLength/tech.featureSize <= 100000) {
+	} else if ((10000 <= wireLength/tech.featureSize) && (wireLength/tech.featureSize<= 100000)) {
 		wireWidth = 2*param->wireWidth;
 	} else {
 		wireWidth = 1*param->wireWidth;
 	}
 	
+	/*
+	if (tech.featureSize <= 2e-9)
+	{
+
+	if (wireLength/tech.featureSize >= 100000) {
+		wireWidth = 6*param->wireWidth;
+	} else if (10000 <= wireLength/tech.featureSize <= 100000) {
+		wireWidth = 3*param->wireWidth;
+	} else {
+		wireWidth = 1*param->wireWidth;
+	}
+
+	}
+	*/
+
+	// wirewidth
+
+	// 1.4 update 
+	double barrierthickness=0;
+
 	if (wireWidth >= 175) {
 		AR = 1.6; 
-		Rho = 2.20e-8;
-	} else if (110 <= wireWidth < 175) {
+		Rho = 2.01e-8;
+		barrierthickness = 10.0e-9 ;
+	} else if ((110 <= wireWidth ) && (wireWidth < 175)) {
 		AR = 1.6; 
-		Rho = 2.52e-8;
-	} else if (105 <= wireWidth < 110) {
+		Rho = 2.20e-8;
+		barrierthickness = 10.0e-9 ;
+	} else if ((105 <= wireWidth) && (wireWidth< 110)) {
 		AR = 1.7; 
-		Rho = 2.68e-8;
-	} else if (80 <= wireWidth < 105) {
+		Rho = 2.21e-8;
+		barrierthickness = 7.0e-9 ;
+	} else if ((80 <= wireWidth) && (wireWidth<105)) {
 		AR = 1.7; 
-		Rho = 3.31e-8;
-	} else if (56 <= wireWidth < 80) {
+		Rho = 2.37e-8;
+		barrierthickness = 5.0e-9 ;
+	} else if ((56 <= wireWidth) &&   (wireWidth<80)) {
 		AR = 1.8; 
-		Rho = 3.70e-8;
-	} else if (40 <= wireWidth < 56) {
+		Rho = 2.63e-8;
+		barrierthickness = 4.0e-9 ; 
+	} else if ((40 <= wireWidth) &&  (wireWidth<56)) {
 		AR = 1.9; 
-		Rho = 4.03e-8;
-	} else if (25 <= wireWidth < 40) {
+		Rho = 2.97e-8;
+		barrierthickness = 3.0e-9 ;
+	} else if ((32 <= wireWidth) &&  (wireWidth< 40)) {
 		AR = 2.0; 
-		Rho = 5.08e-8;
-	}else {
-		AR = 2.0;
-		Rho = 6.35e-8;
-	} 
+		Rho = 3.25e-8;
+		barrierthickness = 2.5e-9 ;
+	} else if ((22 <= wireWidth) && (wireWidth< 32)){
+		AR = 2.00; Rho = 3.95e-8;
+		barrierthickness = 2.5e-9 ;
+	} else if ((20 <= wireWidth) && (wireWidth< 22)){
+		AR = 2.00; Rho = 4.17e-8; 
+		barrierthickness = 2.5e-9 ;
+	} else if ((15 <= wireWidth) && (wireWidth< 20)){
+		AR = 2.00; Rho = 4.98e-8; 
+		barrierthickness = 2.0e-9 ; 
+	} else if ((12 <= wireWidth) && (wireWidth< 15)){
+		AR = 2.00; Rho = 5.8e-8; 
+		 barrierthickness = 1.5e-9 ;
+	} else if ((10 <= wireWidth) && (wireWidth< 12)){
+		AR = 3.00; Rho = 6.65e-8; 
+		barrierthickness = 0.5e-9 ;
+	} else if ((8 <= wireWidth) && (wireWidth< 10)){
+		AR = 3.00; Rho = 7.87e-8; 
+		barrierthickness = 0.5e-9 ;
+	} else {
+		exit(-1); puts("Wire width out of range"); 
+	}
+
+	Rho = Rho * 1 / (1- ( (2*AR*wireWidth + wireWidth)*barrierthickness / (AR*pow(wireWidth,2) ) ));
+	
+
 	Rho *= (1+0.00451*(param->temp-300));
 	if (wireWidth == -1) {
 		unitLengthWireResistance = 1.0;	// Use a small number to prevent numerical error for NeuroSim

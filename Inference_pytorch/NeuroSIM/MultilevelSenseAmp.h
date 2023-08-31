@@ -64,6 +64,7 @@ public:
 	void CalculateLatency(const vector<double> &columnResistance, double numColMuxed, double numRead);
 	void CalculatePower(const vector<double> &columnResistance, double numRead);
 	double GetColumnLatency(double columnRes);
+	double ColumnLatency_Table(double Res, double tech);
 	double GetColumnPower(double columnRes);
 
 	/* Properties */
@@ -80,6 +81,17 @@ public:
 	double clkFreq;
 	int numReadCellPerOperationNeuro;
 	vector<double> Rref;
+
+	// 1.4 update - updated 
+	double gatecap_senseamp_N =0;
+	double gatecap_senseamp_P =0;
+	double junctioncap_senseamp_N =0;
+	double junctioncap_senseamp_P =0;
+	double capNandInput =0; 
+	double capNandOutput =0;
+	double widthNandN = 2 * MIN_NMOS_SIZE * tech.featureSize;
+	double widthNandP = tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
+
 
 	CurrentSenseAmp currentSenseAmp;
 };

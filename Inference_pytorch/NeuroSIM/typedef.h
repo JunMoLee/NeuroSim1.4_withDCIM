@@ -44,6 +44,7 @@ namespace Type {	// To prevent name collision
 		SRAM,
 		RRAM,
 		FeFET,
+		DCIM
 	};
 }
 enum CellAccessType

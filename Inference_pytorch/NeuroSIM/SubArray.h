@@ -66,6 +66,8 @@
 #include "MultilevelSAEncoder.h"
 #include "SarADC.h"
 #include "LevelShifter.h"
+#include "AdderTree_DCIM.h"
+#include "Adder_DCIM.h"
 
 using namespace std;
 
@@ -110,6 +112,12 @@ public:
 	double resCellAccess;	// Resistance of access device, Unit: ohm
 	double capCellAccess;	// Capacitance of access device, Unit: ohm
 	double colDelay;	// Column delay, Unit: s
+	double rowDelay;
+
+	// DCIM part //
+	// 1.4 update-2
+	double widthInvN, widthInvP;
+	double wInv, hInv, drivecapin, drivecapout, sectionres, targetdriveres;
 
 	double activityRowWrite;	// Activity for # of rows in the write
 	double activityColWrite;	// Activity for # of columns in the write
@@ -160,9 +168,27 @@ public:
 
 	double areaADC, areaAccum, areaOther, readLatencyADC, readLatencyAccum, readLatencyOther, readDynamicEnergyADC, readDynamicEnergyAccum, readDynamicEnergyOther;
 	
+	double readDynamicEnergyShiftAdd;
+	double readDynamicEnergyAdder;
+	double readDynamicEnergyBuffer;
+	double readDynamicSwitchmatrix;
+	double readDynamicInterconnect;
+	double readDynamicBufferinShiftAdd;
+
+	// DCIM part //
+
+	double addertree_togglerate;
+	
+
+	// Anni update
+	int numRowParallel, numAdd; 
+	double leakageSRAMInUse;
+
 	bool trainingEstimation, parallelTrans;
 	int levelOutputTrans, numRowMuxedTrans, numReadPulseTrans;
-
+	
+	double resRowforSwitchMatrix;
+	double capRowforSwitchMatrix;
 	/* Circuit Modules */
 	LevelShifter			 wllevelshifter;
 	LevelShifter			 sllevelshifter;
@@ -190,6 +216,8 @@ public:
 	MultilevelSenseAmp       multilevelSenseAmp;
 	MultilevelSAEncoder      multilevelSAEncoder;
 	SarADC                   sarADC;
+	AdderTree_DCIM			 addertree;
+	Adder_DCIM			 adder_DCIM;
 };
 
 #endif /* SUBARRAY_H_ */

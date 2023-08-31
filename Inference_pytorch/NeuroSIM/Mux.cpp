@@ -61,18 +61,22 @@ void Mux::Initialize(int _numInput, int _numSelection, double _resTg, bool _FPGA
 		widthTgN = MIN_NMOS_SIZE * tech.featureSize;
 		widthTgP = tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
 		EnlargeSize(&widthTgN, &widthTgP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
-		resTg = 1 / (1/CalculateOnResistance(widthTgN, NMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO 
-					+ 1/CalculateOnResistance(widthTgP, PMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO);
+		// 1.4 update
+		resTg = 1 / (1/CalculateOnResistance_normal(widthTgN, NMOS, inputParameter.temperature, tech) 
+					+ 1/CalculateOnResistance_normal(widthTgP, PMOS, inputParameter.temperature, tech));
 	} else {
 		// modified by Junmo for GAA. FinFET compatibility - 220922
+
+		// 1.4 update
 		resTg = _resTg * IR_DROP_TOLERANCE;
-		widthTgN = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech)
-								* tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
-		widthTgP = CalculateOnResistance(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech)
-								* tech.featureSize * LINEAR_REGION_RATIO/ (resTg*2);
-		EnlargeSize(&widthTgN, &widthTgP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
-		resTg = 1 / (1/CalculateOnResistance(widthTgN, NMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO 
-					+ 1/CalculateOnResistance(widthTgP, PMOS, inputParameter.temperature, tech)/LINEAR_REGION_RATIO);
+		widthTgN = CalculateOnResistance_normal(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, NMOS, inputParameter.temperature, tech)
+								* tech.featureSize / (resTg*2);
+		widthTgP = CalculateOnResistance_normal(((tech.featureSize <= 14*1e-9)? 2:1)*tech.featureSize, PMOS, inputParameter.temperature, tech)
+								* tech.featureSize/ (resTg*2);
+		// no enlarge: 1.4 update
+		// EnlargeSize(&widthTgN, &widthTgP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
+		resTg = 1 / (1/CalculateOnResistance_normal(widthTgN, NMOS, inputParameter.temperature, tech)
+					+ 1/CalculateOnResistance_normal(widthTgP, PMOS, inputParameter.temperature, tech));
 	}
 	initialized = true;
 }
@@ -112,19 +116,19 @@ void Mux::CalculateArea(double _newHeight, double _newWidth, AreaModify _option)
 				double minCellWidth = 2 * (POLY_WIDTH + MIN_GAP_BET_GATE_POLY) * tech.featureSize; // min standard cell width
 
 					if (tech.featureSize == 14 * 1e-9)
-					minCellWidth  *= ((POLY_WIDTH_FINFET + MIN_GAP_BET_GATE_POLY_FINFET )/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+					minCellWidth  *= ( (double)CPP_14nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 10 * 1e-9)
-    				minCellWidth  *= (CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_10nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 7 * 1e-9)
-    				minCellWidth  *= (CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_7nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 5 * 1e-9)
-    				minCellWidth  *= (CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_5nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 3 * 1e-9)
-    				minCellWidth  *= (CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_3nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 2 * 1e-9)
-    				minCellWidth  *= (CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_2nm /(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else if (tech.featureSize == 1 * 1e-9)
-    				minCellWidth  *= (CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
+    				minCellWidth  *= ( (double)CPP_1nm/(MIN_GAP_BET_GATE_POLY + POLY_WIDTH));
     				else
     				minCellWidth  *= 1;
 
@@ -189,7 +193,7 @@ void Mux::CalculateLatency(double _rampInput, double _capLoad, double numRead) {
 		readLatency = 0;
 
 		// TG
-		tr = resTg*2 * (capTgDrain + 0.5*capTgGateN + 0.5*capTgGateP + capLoad);	// Calibration: use resTg*2 (only one transistor is transmitting signal in the pass gate) may be more accurate, and include gate cap because the voltage at the source of NMOS and drain of PMOS is changing (assuming Cg = 0.5Cgs + 0.5Cgd)
+		tr = resTg * (capTgDrain + 0.5*capTgGateN + 0.5*capTgGateP + capLoad);	// Calibration: use resTg*2 (only one transistor is transmitting signal in the pass gate) may be more accurate, and include gate cap because the voltage at the source of NMOS and drain of PMOS is changing (assuming Cg = 0.5Cgs + 0.5Cgd)
 
 		readLatency += 2.3 * tr;	// 2.3 means charging from 0% to 90%
 		readLatency *= numRead;

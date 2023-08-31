@@ -53,7 +53,7 @@ Adder::Adder(const InputParameter& _inputParameter, const Technology& _tech, con
 
 void Adder::Initialize(int _numBit, int _numAdder, double _clkFreq){
 	if (initialized)
-		cout << "[Adder] Warning: Already initialized!" << endl;
+		cout << "[Adder] Warning: Already initialized!" << _numBit << " " << numAdder<<  endl;
 	
 	numBit = _numBit;
 	numAdder = _numAdder;
@@ -61,9 +61,11 @@ void Adder::Initialize(int _numBit, int _numAdder, double _clkFreq){
 	
 	widthNandN = 2 * MIN_NMOS_SIZE * tech.featureSize;
 	widthNandP = tech.pnSizeRatio * MIN_NMOS_SIZE * tech.featureSize;
-
+	//cout<<widthNandN<<endl;
+	//cout<<widthNandP<<endl;
 	EnlargeSize(&widthNandN, &widthNandP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech);
-	
+	//cout<<widthNandN<<endl;
+	//cout<<widthNandP<<endl;
 	initialized = true;
 }
 
@@ -72,8 +74,10 @@ void Adder::CalculateArea(double _newHeight, double _newWidth, AreaModify _optio
 		cout << "[Adder] Error: Require initialization first!" << endl;
 	} else {
 		double hNand, wNand;
-		// NAND2
-		CalculateGateArea(NAND, 2, widthNandN, widthNandP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);
+		if ((tech.featureSize <= 2e-9) && param->speciallayout) {CalculateGateArea(NAND, 2, MIN_NMOS_SIZE * tech.featureSize, MIN_NMOS_SIZE * tech.featureSize, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);}
+		else {CalculateGateArea(NAND, 2, widthNandN, widthNandP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);}
+
+		
 		area = 0;
 		height = 0;
 		width = 0;
@@ -120,13 +124,19 @@ void Adder::CalculateArea(double _newHeight, double _newWidth, AreaModify _optio
 				break;
 		}
 		
-		// NAND2 capacitance
-		CalculateGateCapacitance(NAND, 2, widthNandN, widthNandP, hNand, tech, &capNandInput, &capNandOutput);
+		if ((tech.featureSize == 2e-9) && param->speciallayout) { 
+			CalculateGateCapacitance_GAA(NAND, 2, MIN_NMOS_SIZE * tech.featureSize, MIN_NMOS_SIZE * tech.featureSize, hNand, tech, &capNandInput, &capNandOutput, 1.0, 22.0/15.0, 8.0/15.0); }
+	    else if ((tech.featureSize == 1e-9) && param->speciallayout) {
+			CalculateGateCapacitance_GAA(NAND, 2, MIN_NMOS_SIZE * tech.featureSize, MIN_NMOS_SIZE * tech.featureSize, hNand, tech, &capNandInput, &capNandOutput, 1.0, 23.0/15.0, 7.0/15.0); }
+		else {
+			CalculateGateCapacitance(NAND, 2, widthNandN, widthNandP, hNand, tech, &capNandInput, &capNandOutput);
+		}
+
 	}
 }
 
 void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead){
-	if (!initialized) {
+if (!initialized) {
 		cout << "[Adder] Error: Require initialization first!" << endl;
 	} else {
 		readLatency = 0;
@@ -144,13 +154,18 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 		// Calibration data pattern is A=1111111..., B=1000000... and Cin=1
 		// 1st
 		resPullDown = CalculateOnResistance(widthNandN, NMOS, inputParameter.temperature, tech) * 2;
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullDown = resPullDown *3.0/2.0;}
 		tr = resPullDown * (capNandOutput + capNandInput * 3);
 		gm = CalculateTransconductance(widthNandN, NMOS, tech);
 		beta = 1 / (resPullDown * gm);
 		readLatency += horowitz(tr, beta, ramp[0], &ramp[1]);
 		
 		// 2nd
+
 		resPullUp = CalculateOnResistance(widthNandP, PMOS, inputParameter.temperature, tech);
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullUp= resPullUp *3.0/2.0;}
 		tr = resPullUp * (capNandOutput + capNandInput * 2);
 		gm = CalculateTransconductance(widthNandP, PMOS, tech);
 		beta = 1 / (resPullUp * gm);
@@ -158,6 +173,8 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 		
 		// 3rd
 		resPullDown = CalculateOnResistance(widthNandN, NMOS, inputParameter.temperature, tech) * 2;
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullDown = resPullDown *3.0/2.0;}
 		tr = resPullDown * (capNandOutput + capNandInput * 3);
 		gm = CalculateTransconductance(widthNandN, NMOS, tech);
 		beta = 1 / (resPullDown * gm);
@@ -165,6 +182,8 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 
 		// 4th
 		resPullUp = CalculateOnResistance(widthNandP, PMOS, inputParameter.temperature, tech);
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullUp= resPullUp *3.0/2.0;}
 		tr = resPullUp * (capNandOutput + capNandInput * 2);
 		gm = CalculateTransconductance(widthNandP, PMOS, tech);
 		beta = 1 / (resPullUp * gm);
@@ -176,6 +195,8 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 		
 		// 5th
 		resPullDown = CalculateOnResistance(widthNandN, NMOS, inputParameter.temperature, tech) * 2;
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullDown = resPullDown *3.0/2.0;}
 		tr = resPullDown * (capNandOutput + capNandInput * 3);
 		gm = CalculateTransconductance(widthNandN, NMOS, tech);
 		beta = 1 / (resPullDown * gm);
@@ -183,6 +204,8 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 
 		// 6th
 		resPullUp = CalculateOnResistance(widthNandP, PMOS, inputParameter.temperature, tech);
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullUp= resPullUp *3.0/2.0;}
 		tr = resPullUp * (capNandOutput + capNandInput);
 		gm = CalculateTransconductance(widthNandP, PMOS, tech);
 		beta = 1 / (resPullUp * gm);
@@ -190,6 +213,23 @@ void Adder::CalculateLatency(double _rampInput, double _capLoad, double numRead)
 		
 		// 7th
 		resPullDown = CalculateOnResistance(widthNandN, NMOS, inputParameter.temperature, tech) * 2;
+		if ((tech.featureSize <= 2e-9) && param->speciallayout)
+		{resPullDown = resPullDown *3.0/2.0;}
+
+/*	
+		tr = resPullDown * (capNandOutput + capNandInput); // modified by junmo
+		gm = CalculateTransconductance(widthNandN, NMOS, tech);
+		beta = 1 / (resPullDown * gm);
+		readLatency += horowitz(tr, beta, ramp[6], &ramp[7]);
+
+		if (param->synchronous) {
+			readLatency  = ceil(readLatency*clkFreq);	//#cycles
+		}
+		
+
+		readLatency *= numRead;
+		rampOutput = ramp[7];
+*/
 		tr = resPullDown * (capNandOutput + capLoad);
 		gm = CalculateTransconductance(widthNandN, NMOS, tech);
 		beta = 1 / (resPullDown * gm);
@@ -211,8 +251,17 @@ void Adder::CalculatePower(double numRead, int numAdderPerOperation) {
 		readDynamicEnergy = 0;
 		
 		/* Leakage power */
+		if ((tech.featureSize == 2e-9) && param->speciallayout) { 
+				/* Leakage power */
+		leakage += CalculateGateLeakage(NAND, 2, MIN_NMOS_SIZE * tech.featureSize, MIN_NMOS_SIZE * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 9 * numBit * numAdder * 2/3; }
+	    else if ((tech.featureSize == 1e-9) && param->speciallayout) {
+				/* Leakage power */
+		leakage += CalculateGateLeakage(NAND, 2, MIN_NMOS_SIZE * tech.featureSize, MIN_NMOS_SIZE * tech.featureSize, inputParameter.temperature, tech) * tech.vdd * 9 * numBit * numAdder * 2/3;}
+		else {
+				/* Leakage power */
 		leakage += CalculateGateLeakage(NAND, 2, widthNandN, widthNandP, inputParameter.temperature, tech) * tech.vdd * 9 * numBit * numAdder;
-
+		}
+		
 		/* Read Dynamic energy */
 		// Calibration data pattern of critical path is A=1111111..., B=1000000... and Cin=1
 		// Only count 0 to 1 transition for energy
@@ -237,7 +286,7 @@ void Adder::CalculatePower(double numRead, int numAdderPerOperation) {
 		readDynamicEnergy *= MIN(numAdderPerOperation, numAdder) * numRead;
 		
 		if(param->validated){
-				readDynamicEnergy *= param->delta; 	// switching activity of adder, delta = 0.15 by default
+				readDynamicEnergy *= param->delta ; 	// switching activity of adder, delta = 0.15 by default
 		}
 	}
 }

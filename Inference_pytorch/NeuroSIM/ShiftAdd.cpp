@@ -66,6 +66,7 @@ void ShiftAdd::Initialize(int _numUnit, int _numAdderBit, double _clkFreq, Spiki
 		numDff = (numAdderBit+1 + numReadPulse-1) * numUnit;	// numAdderBit+1 because the adder output is 1 bit more than the input, and numReadPulse-1 is for shift-and-add extension (shift register)
 		dff.Initialize(numDff, clkFreq);
 		adder.Initialize(numAdderBit, numAdder, clkFreq);
+		
 	} else {	// SPIKING: count spikes
 		numBitPerDff = pow(2, numAdderBit);
 		numDff = numBitPerDff * numUnit;	// numUnit shift registers in total
@@ -91,10 +92,18 @@ void ShiftAdd::CalculateArea(double _newHeight, double _newWidth, AreaModify _op
 		cout << "[ShiftAdd] Error: Require initialization first!" << endl;
 	} else {
 		double hInv, wInv, hNand, wNand;
-		// INV
-		CalculateGateArea(INV, 1, widthInvN, widthInvP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hInv, &wInv);
-		// NAND2
-		CalculateGateArea(NAND, 2, widthNandN, widthNandP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);
+		
+		if ((tech.featureSize <= 2e-9) && param->speciallayout) {		// INV
+			CalculateGateArea(INV, 1, widthInvN, widthInvP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hInv, &wInv);
+			// NAND2
+			CalculateGateArea(NAND, 2, widthNandN/2.0, widthNandP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);
+		}
+		else {		// INV
+			CalculateGateArea(INV, 1, widthInvN, widthInvP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hInv, &wInv);
+			// NAND2
+			CalculateGateArea(NAND, 2, widthNandN, widthNandP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);
+		}
+
 		area = 0;
 		height = 0;
 		width = 0;
@@ -111,7 +120,7 @@ void ShiftAdd::CalculateArea(double _newHeight, double _newWidth, AreaModify _op
 				double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;
 
 				if (tech.featureSize == 14 * 1e-9)
-				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_14nm/MAX_TRANSISTOR_HEIGHT);
 				else if (tech.featureSize == 10 * 1e-9)
 				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
 				else if (tech.featureSize == 7 * 1e-9)
@@ -134,7 +143,7 @@ void ShiftAdd::CalculateArea(double _newHeight, double _newWidth, AreaModify _op
 				double MIN_CELL_HEIGHT = MAX_TRANSISTOR_HEIGHT;
 
 				if (tech.featureSize == 14 * 1e-9)
-				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_FINFET/MAX_TRANSISTOR_HEIGHT);
+				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_14nm/MAX_TRANSISTOR_HEIGHT);
 				else if (tech.featureSize == 10 * 1e-9)
 				MIN_CELL_HEIGHT *= (MAX_TRANSISTOR_HEIGHT_10nm /MAX_TRANSISTOR_HEIGHT);
 				else if (tech.featureSize == 7 * 1e-9)
@@ -235,13 +244,57 @@ void ShiftAdd::CalculatePower(double numRead) {
 		readDynamicEnergy = 0;
 		if (spikingMode == NONSPIKING) {	// NONSPIKING: binary format
 			adder.CalculatePower(numRead, numAdder);
-			dff.CalculatePower(numRead, numDff, param->validated);
+			dff.CalculatePower(numRead, numDff , param->validated);
 			
-			readDynamicEnergy += adder.readDynamicEnergy;
-			readDynamicEnergy += dff.readDynamicEnergy;
+			// DCIM part // 
 
+			if ((param->DCIM_energy_recalculated) && (cell.memCellType == Type::DCIM)) { // toggle vs energy, for 12-bit input
+
+				double  energytemp;
+
+				if (tech.featureSize == 32 * 1e-9){
+					energytemp = 0.0247e-12  * 1.8;
+				}
+				else if (tech.featureSize == 22 * 1e-9){
+					energytemp = 0.0247e-12;
+				}
+				else if (tech.featureSize == 14 * 1e-9){
+					energytemp = 0.0094e-12;
+				}
+				else if (tech.featureSize == 10 * 1e-9){
+					energytemp = 0.0074e-12;
+				}
+				else if (tech.featureSize == 7 * 1e-9){
+					energytemp = 0.0067e-12;
+				}
+				else if (tech.featureSize == 5 * 1e-9){
+					energytemp = 0.0056e-12;
+				}
+				else if (tech.featureSize == 3 * 1e-9){
+					energytemp = 0.0048e-12;
+				}
+				else if (tech.featureSize == 2 * 1e-9){
+					energytemp = 0.0019e-12;
+				}
+				else if (tech.featureSize == 1 * 1e-9){
+					energytemp = 0.0014e-12;
+				}
+				else{
+					cout << "[ShiftAdd] DCIM shiftadd energy not defined" << endl;
+				}
+
+				readDynamicEnergy += energytemp;
+
+			}
+
+			else { 
+				readDynamicEnergy += adder.readDynamicEnergy;
+			}
+
+			readDynamicEnergy += dff.readDynamicEnergy;
 			leakage += adder.leakage;
 			leakage += dff.leakage;
+			
 		} else {	// SPIKING: count spikes
 			dff.CalculatePower(numRead, numDff, param->validated);
 			readDynamicEnergy += dff.readDynamicEnergy;

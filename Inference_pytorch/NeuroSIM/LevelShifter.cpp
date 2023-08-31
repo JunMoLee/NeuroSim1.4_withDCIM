@@ -86,9 +86,14 @@ void LevelShifter::CalculateArea(double _newHeight, double _newWidth, AreaModify
 		if (param->validated){			
 			CalculateGateArea(INV, 1, widthN*15*2, widthP*20*2, tech.featureSize*MAX_TRANSISTOR_HEIGHT*2.5, tech, &hlow, &wlow); 	//width*2, height*2.5
 			CalculateGateArea(INV, 1, widthN*32*2, widthP*10*2, tech.featureSize*MAX_TRANSISTOR_HEIGHT*2.5, tech, &hlatch, &wlatch);
-			CalculateGateArea(INV, 1, widthN*64*2, widthP*82*2, tech.featureSize*MAX_TRANSISTOR_HEIGHT*2.5, tech, &hhigh, &whigh);
+			CalculateGateArea_debug(INV, 1, widthN*64*2, widthP*82*2, tech.featureSize*MAX_TRANSISTOR_HEIGHT*2.5, tech, &hhigh, &whigh);
 			double hLS = max(max(hlow, hlatch), hhigh);
 			double wLS = (wlow + (2*wlatch + whigh)*2.5);		//latch and high_voltage_pull_up are IO transistors, l=270nm
+
+			param->area_LS_biggest = CalculateGateArea(INV, 1, widthN*64*2, widthP*82*2, tech.featureSize*MAX_TRANSISTOR_HEIGHT*2.5, tech, &hhigh, &whigh);
+			
+			param->area_levelw=whigh;
+			param->area_levelh=hhigh;
 			area = hLS * wLS * numOutput*param->alpha;	//consider wire areas, alpha = 1.44 by default
 		}else{
 			CalculateGateArea(INV, 1, widthN*15, widthP*20, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech, &hlow, &wlow);

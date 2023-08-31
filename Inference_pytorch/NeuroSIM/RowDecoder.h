@@ -58,7 +58,9 @@ public:
 	void SaveOutput(const char* str);
 	void Initialize(DecoderMode _mode, int _numAddrRow, bool _MUX, bool _parallel);
 	void CalculateArea(double _newHeight, double _newWidth, AreaModify _option);
-	void CalculateLatency(double _rampInput, double _capLoad1, double _capLoad2, double numRead, double numWrite);
+
+	// 1.4 update: update the latency function
+	void CalculateLatency(double _rampInput, double _capLoad1, double _capLoad2, double resLoad, double colnum, double numRead, double numWrite);
 	void CalculatePower(double numRead, double numWrite);
 
 	/* Properties */
@@ -76,6 +78,10 @@ public:
 	DecoderMode mode;	// ROW or COLUMN mode
 	bool MUX;	// MUX mode
 	bool parallel;    // for mux decoder of parallel reading mode
+
+	// 1.4 update: final driver width 
+	double widthDriverInvN_final, widthDriverInvP_final;
+	double capDriverInvInput_final, capDriverInvOutput_final;
 };
 
 #endif /* ROWDECODER_H_ */

@@ -137,9 +137,18 @@ void AdderTree::CalculateLatency(double numRead, int numUnitAdd, double _capLoad
 			j = numUnitAdd;
 		}
 
+		numAdderEachStage = ceil(j/2);
+		adder.Initialize(numBitEachStage, numAdderEachStage, clkFreq); 
+		adder.CalculateLatency(1e20, _capLoad, 1);
+		readLatency += adder.readLatency;
+		numBitEachStage += 1;
+		j = ceil(j/2);
+		i -= 1;
+		adder.initialized = false;
+		if (i>0) {
 		while (i != 0) {   // calculate the total # of full adder in each Adder Tree
 			numAdderEachStage = ceil(j/2);
-			adder.Initialize(numBitEachStage, numAdderEachStage, clkFreq);   
+			adder.Initialize(2, numAdderEachStage, clkFreq);   
 			adder.CalculateLatency(1e20, _capLoad, 1);
 			readLatency += adder.readLatency;
 			numBitEachStage += 1;
@@ -148,6 +157,9 @@ void AdderTree::CalculateLatency(double numRead, int numUnitAdd, double _capLoad
 			
 			adder.initialized = false;
 		}
+		}
+
+
         readLatency *= numRead;		
 	}
 }
@@ -174,8 +186,11 @@ void AdderTree::CalculatePower(double numRead, int numUnitAdd) {
 		}
 		
 		while (i != 0) {  // calculate the total # of full adder in each Adder Tree
+
+		
 			numAdderEachStage = ceil(j/2);
-			adder.Initialize(numBitEachStage, numAdderEachStage, clkFreq);     
+			adder.Initialize(numBitEachStage, numAdderEachStage, clkFreq);   
+			
 			adder.CalculatePower(1, numAdderEachStage);	
 			readDynamicEnergy += adder.readDynamicEnergy;	
 			leakage += adder.leakage;

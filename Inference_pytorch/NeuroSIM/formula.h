@@ -53,7 +53,19 @@ double CalculateGateArea(
 		double heightTransistorRegion, Technology tech,
 		double *height, double *width);
 
+double CalculateGateArea_debug(
+		int gateType, int numInput,
+		double widthNMOS, double widthPMOS,
+		double heightTransistorRegion, Technology tech,
+		double *height, double *width);
+
 /* Calculate the capacitance of a logic gate */
+void CalculateGateCapacitance_GAA(
+		int gateType, int numInput,
+		double widthNMOS, double widthPMOS,
+		double heightTransistorRegion, Technology tech,
+		double *capInput, double *capOutput, double Gatefactor, double Ntuningfactor, double Ptuningfactor);
+
 void CalculateGateCapacitance(
 		int gateType, int numInput,
 		double widthNMOS, double widthPMOS,
@@ -70,6 +82,8 @@ double CalculateGateLeakage(
 		double temperature, Technology tech);
 
 double CalculateOnResistance(double width, int type, double temperature, Technology tech);
+
+double CalculateOnResistance_normal(double width, int type, double temperature, Technology tech); 
 
 double CalculateTransconductance(double width, int type, Technology tech);
 

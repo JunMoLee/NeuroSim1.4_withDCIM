@@ -3,6 +3,7 @@ print = misc.logger.info
 import torch.nn as nn
 from modules.quantization_cpu_np_infer import QConv2d,  QLinear
 from modules.floatrange_cpu_np_infer import FConv2d, FLinear
+
 import torch
 import math
 name=0

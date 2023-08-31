@@ -107,6 +107,7 @@ void MaxPooling::CalculateUnitArea(AreaModify _option) {
 	} else {
 		double hInv, wInv, hNand, wNand, hNor, wNor, hNor2, wNor2;
 		// INV
+
 		CalculateGateArea(INV, 1, widthInvN, widthInvP, tech.featureSize * MAX_TRANSISTOR_HEIGHT, tech, &hInv, &wInv);
 		// NAND2
 		CalculateGateArea(NAND, 2, widthNandN, widthNandP, tech.featureSize*MAX_TRANSISTOR_HEIGHT, tech, &hNand, &wNand);

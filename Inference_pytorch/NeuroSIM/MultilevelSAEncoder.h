@@ -70,6 +70,8 @@ public:
 	int numInput;       // number of NAND gate in encoder
 	int numGate;        // number of NAND gate in encoder 
 
+	// 1.4 update
+	double capInvInput_Encoder, capInvOutput_Encoder;
 };
 
 #endif /* MultilevelSAEncoder_H_ */

@@ -84,7 +84,9 @@ public:
 	double max_fin_per_GAA=0;
 	double width_sheet=0;
 	double effective_width=0;
+	double gm_oncurrent = 0;  // gm at on current
 	double capPolywire;	/* Poly wire capacitance, Unit: F/m */
+	double cap_draintotal = 0;
 };
 
 #endif /* TECHNOLOGY_H_ */

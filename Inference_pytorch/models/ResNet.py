@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 from modules.quantization_cpu_np_infer import QConv2d, QLinear
 from modules.floatrange_cpu_np_infer import FConv2d, FLinear
-from torchvision.models.utils import load_state_dict_from_url
+## from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 name=0
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -305,7 +306,7 @@ def resnet34(pretrained=None, progress=True, args=None, logger=None, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress,
+    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress, args=args, logger=logger,
                    **kwargs)
 
 
@@ -317,7 +318,7 @@ def resnet50(pretrained=None, progress=True, args=None, logger=None, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,
+    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress, args=args, logger=logger,
                    **kwargs)
 
 
@@ -329,7 +330,7 @@ def resnet101(pretrained=None, progress=True, args=None, logger=None, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], pretrained, progress,
+    return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], pretrained, progress, args=args, logger=logger,
                    **kwargs)
 
 
@@ -341,7 +342,7 @@ def resnet152(pretrained=None, progress=True, args=None, logger=None, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet152', Bottleneck, [3, 8, 36, 3], pretrained, progress,
+    return _resnet('resnet152', Bottleneck, [3, 8, 36, 3], pretrained, progress, args=args, logger=logger,
                    **kwargs)
 
 
@@ -356,7 +357,7 @@ def resnext50_32x4d(pretrained=None, progress=True, args=None, logger=None, **kw
     kwargs['groups'] = 32
     kwargs['width_per_group'] = 4
     return _resnet('resnext50_32x4d', Bottleneck, [3, 4, 6, 3],
-                   pretrained, progress, **kwargs)
+                   pretrained, progress, args=args, logger=logger, **kwargs)
 
 
 def resnext101_32x8d(pretrained=None, progress=True, args=None, logger=None, **kwargs):
@@ -370,7 +371,7 @@ def resnext101_32x8d(pretrained=None, progress=True, args=None, logger=None, **k
     kwargs['groups'] = 32
     kwargs['width_per_group'] = 8
     return _resnet('resnext101_32x8d', Bottleneck, [3, 4, 23, 3],
-                   pretrained, progress, **kwargs)
+                   pretrained, progress, args=args, logger=logger, **kwargs)
 
 
 def wide_resnet50_2(pretrained=None, progress=True, args=None, logger=None, **kwargs):
@@ -388,7 +389,7 @@ def wide_resnet50_2(pretrained=None, progress=True, args=None, logger=None, **kw
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet50_2', Bottleneck, [3, 4, 6, 3],
-                   pretrained, progress, **kwargs)
+                   pretrained, progress, args=args, logger=logger, **kwargs)
 
 
 def wide_resnet101_2(pretrained=None, progress=True, args=None, logger=None, **kwargs):
@@ -406,4 +407,4 @@ def wide_resnet101_2(pretrained=None, progress=True, args=None, logger=None, **k
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet101_2', Bottleneck, [3, 4, 23, 3],
-                   pretrained, progress, **kwargs)
+                   pretrained, progress, args=args, logger=logger, **kwargs)

@@ -47,6 +47,7 @@
 #include "MemCell.h"
 #include "DFF.h"
 
+
 class NewSwitchMatrix: public FunctionUnit {
 public:
 	NewSwitchMatrix(const InputParameter& _inputParameter, const Technology& _tech, const MemCell& _cell);
